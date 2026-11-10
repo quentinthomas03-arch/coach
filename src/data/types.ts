@@ -168,8 +168,13 @@ export interface FoodItem {
   carbs: number
   fat: number
   barcode?: string
+  /** Famille d'aliments (Ciqual) ou marque (Open Food Facts). */
+  group?: string
+  /** Portion habituelle en grammes (ex. 1 yaourt = 125 g). */
+  portionG?: number
   favorite?: boolean
   lastUsedAt?: ISODateTime
+  usageCount?: number
 }
 
 export interface FoodLogEntry {

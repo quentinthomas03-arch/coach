@@ -31,7 +31,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,json,wasm}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Les appels à Intervals.icu / météo ne sont jamais mis en cache.
         navigateFallback: 'index.html',
       },

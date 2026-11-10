@@ -120,11 +120,15 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
   const open = (wd: number) => dates[wd] >= input.planStart && dates[wd] >= input.today
 
   const kept = input.existing.filter((s) => isKept(s, input.today))
-  const keptRunDays = kept.filter((s) => isRun(s.kind)).map((s) => weekdayIndex(s.date))
+  // Une séance ratée ou retirée garde sa place dans l'historique mais ne compte pas :
+  // le moteur peut la remplacer plus tard dans la semaine.
+  const counts = (s: PlannedSession) => s.status !== 'missed' && s.status !== 'skipped'
+  const keptRunDays = kept.filter((s) => isRun(s.kind) && counts(s)).map((s) => weekdayIndex(s.date))
+  const missedRun = kept.find((s) => isRun(s.kind) && s.status === 'missed')
   // Le dimanche précédent compte comme le « jour -1 » pour l'espacement.
   const spacingRefs = input.ranPreviousSunday ? [-1] : []
-  const keptStrengthDays = kept.filter((s) => s.kind === 'renfo').map((s) => weekdayIndex(s.date))
-  const keptKeyDays = kept.filter((s) => s.key).map((s) => weekdayIndex(s.date))
+  const keptStrengthDays = kept.filter((s) => s.kind === 'renfo' && counts(s)).map((s) => weekdayIndex(s.date))
+  const keptKeyDays = kept.filter((s) => s.key && counts(s)).map((s) => weekdayIndex(s.date))
   const occupied = new Set(kept.map((s) => weekdayIndex(s.date)))
 
   const deload = input.mode === 'objectif' ? false : isDeloadWeek(input.weekIndex)
@@ -268,6 +272,7 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
         w = repriseWorkout(lvl, isLong)
       }
       if (lvl !== level || isLong !== long) reasons.push(`Raccourcie pour tenir dans tes ${max} min disponibles.`)
+      if (missedRun && dates[wd] > missedRun.date) reasons.push(`Remplace la séance non faite du ${WEEKDAYS[weekdayIndex(missedRun.date)]}.`)
       if (long) generatedKeyDays.push(wd)
       sessions.push(runSession(dates[wd], w, { long, level: lvl, reasons }))
     }

@@ -182,4 +182,16 @@ describe('planWeek', () => {
     expect(sessions.filter((s) => s.kind !== 'renfo').some((s) => s.date === addDays(goal.date, -1))).toBe(false)
     expect(strengthDays(sessions)).not.toContain(5)
   })
+
+  it('séance ratée : elle n’est pas comptée et une autre est replanifiée plus tard', () => {
+    const first = planWeek(input()).sessions
+    const tue = first.find((s) => s.kind !== 'renfo' && weekdayIndex(s.date) <= 2)!
+    const missed = { ...tue, status: 'missed' as const, locked: true }
+    const today = addDays(MONDAY, weekdayIndex(tue.date) + 1)
+    const { sessions } = planWeek(input({ today, existing: [missed, ...first.filter((s) => s.id !== tue.id)] }))
+    const futureRuns = sessions.filter((s) => s.kind !== 'renfo' && s.date >= today && s.status === 'planned')
+    expect(futureRuns.length).toBe(3)
+    expect(sessions).toContainEqual(missed)
+    expect(futureRuns.some((s) => s.reasons.join(' ').includes('Remplace la séance non faite'))).toBe(true)
+  })
 })

@@ -3,7 +3,7 @@ import { CoachDB } from '../data/db'
 import { addDays } from '../domain/dates'
 import { IntervalsClient } from '../integrations/intervals'
 import { KEYS, savePlanConfig, type PlanConfig } from './config'
-import { acceptVersion, applyWeeklyReviews, markDone, moveSession, regenerate, rejectVersion, undoVersion } from './plan'
+import { acceptVersion, applyWeeklyReviews, markDone, moveSession, regenerate, rejectVersion, removeSession, undoVersion } from './plan'
 import { sessionsToSend, syncToWatch } from './sync'
 
 const MONDAY = '2026-11-16'
@@ -67,6 +67,22 @@ describe('service du plan', () => {
     const r2 = await regenerate('Encore', MONDAY, database)
     await rejectVersion(r2.version!.id!, database)
     expect((await database.planVersions.get(r2.version!.id!))!.status).toBe('rejected')
+  })
+
+  it('mode valider : une proposition refusée ne revient pas à l’identique', async () => {
+    await regenerate('Création', MONDAY, database)
+    await savePlanConfig(cfg({ recalcMode: 'valider', repriseLevel: 4 }), database)
+    const r = await regenerate('Niveau changé', MONDAY, database)
+    await rejectVersion(r.version!.id!, database)
+    expect((await regenerate('Ouverture suivante', MONDAY, database)).changed).toBe(false)
+  })
+
+  it('séance retirée par moi après envoi : retirée aussi de la montre', async () => {
+    await regenerate('Création', MONDAY, database)
+    const run = (await database.sessions.toArray()).find((s) => s.kind === 'marche-course')!
+    await database.sessions.update(run.id, { sync: { status: 'sent' } })
+    await removeSession(run.id, MONDAY, database)
+    expect((await database.settings.get(KEYS.pendingDeletes))!.value).toContain(run.externalId)
   })
 
   it('annuler un recalcul remet le plan d’avant', async () => {

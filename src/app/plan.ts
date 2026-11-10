@@ -150,6 +150,11 @@ async function writeSessions(before: PlannedSession[], after: PlannedSession[], 
   })
 }
 
+async function queueRemoteDelete(ids: string[], database: CoachDB) {
+  const pending = (await getSetting<string[]>(KEYS.pendingDeletes, database)) ?? []
+  await setSetting(KEYS.pendingDeletes, [...new Set([...pending, ...ids])], database)
+}
+
 const futureOnly = (today: ISODate) => (s: PlannedSession) => s.date >= today
 
 export interface RegenerateResult {
@@ -170,6 +175,10 @@ export async function regenerate(cause: string, today: ISODate, database: CoachD
   if (!changes.length) return { changed: false, notes }
   const first = before.length === 0
   const mode = opts.force ?? (first ? 'auto' : cfg.recalcMode)
+  if (mode === 'valider') {
+    const lastRejected = (await database.planVersions.orderBy('id').reverse().filter((v) => v.status === 'rejected').first())
+    if (lastRejected && JSON.stringify(lastRejected.changes) === JSON.stringify(changes)) return { changed: false, notes }
+  }
   const version: PlanVersion = {
     createdAt: new Date().toISOString(),
     cause,
@@ -226,6 +235,11 @@ async function userEdit(id: string, patch: Partial<PlannedSession>, cause: strin
     sync: s.sync.status === 'sent' ? { ...s.sync, status: 'outdated' } : s.sync,
   }
   await database.planVersions.add({ createdAt: new Date().toISOString(), cause, changes: diffSessions([s], [next]), before: [s], after: [next], status: 'applied' })
+  if (next.status === 'skipped' && (s.sync.status === 'sent' || s.sync.status === 'outdated')) {
+    // Retirée par moi : on l'enlève aussi de la montre.
+    await queueRemoteDelete([s.externalId], database)
+    next.sync = { status: 'not-sent' }
+  }
   await database.sessions.put(next)
   // Le reste de la semaine se réorganise autour de mon choix (toujours appliqué : c'est moi qui l'ai demandé).
   await regenerate(`Réorganisation après : ${cause.toLowerCase()}`, today, database, { force: 'auto' })
@@ -258,7 +272,9 @@ export async function markDone(id: string, rpe: number, database: CoachDB = db) 
 }
 
 export async function markMissed(id: string, today: ISODate, database: CoachDB = db) {
-  await database.sessions.update(id, { status: 'missed', locked: true })
+  const s = await database.sessions.get(id)
+  if (s && (s.sync.status === 'sent' || s.sync.status === 'outdated')) await queueRemoteDelete([s.externalId], database)
+  await database.sessions.update(id, { status: 'missed', locked: true, sync: { status: 'not-sent' } })
   await regenerate('Séance non faite', today, database)
 }
 

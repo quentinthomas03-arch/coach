@@ -101,7 +101,12 @@ export function RoutinePlayer() {
           <h1 className="display text-3xl leading-tight">{s.name}</h1>
           <p className="text-[15px] text-left">{s.description}</p>
           <p className="num display text-7xl" aria-live="off">{left}</p>
-          {steps[i + 1] && <p className="text-sm text-muted">Ensuite : {steps[i + 1].name}</p>}
+          {steps[i + 1] && (
+            <p className="text-sm text-muted">
+              Ensuite : {steps[i + 1].name}
+              {steps[i + 1].side ? ` (${steps[i + 1].side})` : ''}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <button className="btn-secondary" onClick={() => setPaused(!paused)}>
               {paused ? 'Reprendre' : 'Pause'}

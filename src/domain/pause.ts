@@ -46,7 +46,7 @@ export function resumeAfterPause(state: ResumeState, pause: Pause, today: ISODat
   } else if (mode === 'reprise') {
     const drop = weeksOff + (health ? 1 : 0)
     repriseLevel = Math.max(1, repriseLevel - drop)
-    messages.push(`Retour après ${weeksOff} semaine(s) : reprise au niveau ${repriseLevel}/9 (un cran par semaine d’arrêt${health ? ', un de plus après ' + (pause.reason === 'maladie' ? 'une maladie' : 'une blessure') : ''}).`)
+    messages.push(`Retour après ${weeksOff ? `${weeksOff} semaine(s)` : 'quelques jours'} : reprise au niveau ${repriseLevel}/9 (un cran par semaine d’arrêt${health ? ', un de plus après ' + (pause.reason === 'maladie' ? 'une maladie' : 'une blessure') : ''}).`)
   } else if (weeksOff > 4) {
     mode = 'reprise'
     repriseLevel = weeksOff > 8 ? 3 : 5
@@ -54,7 +54,7 @@ export function resumeAfterPause(state: ResumeState, pause: Pause, today: ISODat
   } else {
     const factor = Math.max(0.7, 1 - 0.07 * weeksOff - (health ? 0.1 : 0))
     formeBaseMinutes = Math.round((formeBaseMinutes ?? 120) * factor)
-    messages.push(`Retour après ${weeksOff} semaine(s) : volume ramené à ${formeBaseMinutes} min/semaine (−${Math.round((1 - factor) * 100)} %), puis on remonte progressivement.`)
+    messages.push(`Retour après ${weeksOff ? `${weeksOff} semaine(s)` : 'quelques jours'} : volume ramené à ${formeBaseMinutes} min/semaine (−${Math.round((1 - factor) * 100)} %), puis on remonte progressivement.`)
   }
   if (pause.reason === 'blessure') messages.push('Après une blessure, reprends seulement sans douleur, et avec l’accord de ton médecin ou kiné si elle était sérieuse.')
   if (pause.reason === 'maladie') messages.push('Après une maladie (surtout avec fièvre), les premières séances restent très faciles.')

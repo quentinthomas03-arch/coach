@@ -36,12 +36,15 @@ export interface NoteInsight {
   excerpt: string
 }
 
+/** Extrait autour du mot repéré, coupé sur des mots entiers (norm() garde les positions des lettres). */
 function excerpt(text: string, word: string): string {
-  const n = norm(text)
-  const i = n.indexOf(word.trim())
-  if (i < 0) return text.slice(0, 60)
-  const start = Math.max(0, i - 25)
-  return (start > 0 ? '…' : '') + text.slice(start, i + 35).trim() + (i + 35 < text.length ? '…' : '')
+  const words = text.split(/\s+/)
+  const target = norm(word.trim())
+  let idx = words.findIndex((w) => norm(w).startsWith(target.split(' ')[0]))
+  if (idx < 0) idx = 0
+  const from = Math.max(0, idx - 4)
+  const to = Math.min(words.length, idx + 5)
+  return (from > 0 ? '…' : '') + words.slice(from, to).join(' ') + (to < words.length ? '…' : '')
 }
 
 export function analyzeNote(n: Note): NoteInsight[] {

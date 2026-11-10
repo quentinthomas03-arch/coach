@@ -285,8 +285,11 @@ function SundayCard() {
   if (!(wd === 0 || (wd === 6 && hour >= 17))) return null
   return (
     <section className="card space-y-2" aria-label="Préparer la semaine">
-      <h2 className="display text-lg">Prépare ta semaine</h2>
-      <p className="text-sm text-muted">30 secondes : tes dispos, un œil sur le plan, puis le menu et la liste de courses.</p>
+      <h2 className="display text-lg">Bilan et semaine à venir</h2>
+      <p className="text-sm text-muted">Lis le bilan du coach, puis 30 secondes pour tes dispos, le menu et les courses.</p>
+      <Link to="/bilan" className="btn-primary w-full">
+        Mon bilan de la semaine
+      </Link>
       <div className="grid grid-cols-2 gap-2">
         <Link to="/semaine" className="btn-secondary">
           Dispos et plan

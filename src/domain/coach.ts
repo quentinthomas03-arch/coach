@@ -294,7 +294,7 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
     }
   }
 
-  for (const n of ctx.notice ?? []) out.push({ rule: 'notice', kind: 'info', text: n })
+  ;(ctx.notice ?? []).forEach((n, k) => out.push({ rule: `notice-${k}`, kind: 'info', text: n }))
   // En pause : on garde les alertes santé et l'information, jamais de reproche.
   const kept = ctx.paused ? out.filter((m) => m.kind === 'alerte' || m.kind === 'info' || m.rule.startsWith('tabac')).filter((m) => m.rule !== 'check-oublie') : out
   return kept.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))

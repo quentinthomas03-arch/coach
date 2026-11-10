@@ -6,7 +6,7 @@ describe('notes libres', () => {
   it('douleur et zone', () => {
     const i = analyzeNote({ date: '2026-12-10', text: 'Sortie ok mais un peu mal au genou droit en descente', at: '' })
     expect(i[0]).toMatchObject({ kind: 'douleur', zone: 'genou' })
-    expect(i[0].excerpt).toMatch(/genou/)
+    expect(i[0].excerpt).toBe('…un peu mal au genou droit en descente')
   })
   it('fatigue et bonnes sensations', () => {
     expect(analyzeNote({ date: '', text: 'Complètement crevé après le boulot', at: '' })[0].kind).toBe('fatigue')

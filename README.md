@@ -23,6 +23,18 @@ Coach d'entraînement personnel sur iPhone : course à pied, renforcement muscul
 
 Le plan se recalcule tout seul à chaque ouverture de l’appli : import des séances faites, bilan de la semaine, envoi des 7 prochains jours de course sur la montre.
 
+### Ce que le coach fait aussi
+- **Échauffement et étirements obligatoires** : chaque séance de course commence par 4 min de mobilité et gammes et se termine par 5 min d’étirements, sur la montre comme dans l’appli (guidés avec chrono : boutons « Échauffement guidé » et « Étirements guidés »).
+- **Zones fragiles** (Réglages › Plan) : exercices de prévention ciblés dans le renfo, l’échauffement et les étirements. Si une douleur revient au même endroit, le coach propose de l’ajouter en 1 tap.
+- **Pause** (Plan) : vacances, maladie, blessure. Plus aucune séance ni envoi sur la montre ; au retour, reprise adaptée à la durée et au motif.
+- **Allures automatiques** : les sorties courues à fond (effort 8/10 et plus, ou FC ≥ 90 % de la FC max) servent de référence, les allures se mettent à jour sans test.
+- **Surcharge prolongée** : 3 semaines de travail, de moral ou de fatigue au plus bas → une sortie et un renfo de moins, jusqu’à ce que ça aille mieux.
+- **Sommeil** : heure de coucher conseillée la veille d’une séance clé (heure de lever dans Réglages › Plan), alerte si les nuits sont courtes.
+- **Notes libres** (Aujourd’hui › « + Une note pour le coach ») : le coach repère douleurs, fatigue et bonnes sensations par mots-clés, et réagit.
+- **Tabac × course** : FC de repos avant et depuis l’arrêt, sur la page Tabac.
+- **Bilan de la semaine** (le dimanche sur Aujourd’hui, et dans Suivi) : ce qui a été fait, l’avis du coach, la semaine à venir, partageable.
+- **Eau sans contrainte** : question « Hier, tu as bu ? » dans le check du matin, gourde en 1 tap, ou eau saisie sur la montre (si Intervals.icu la transmet).
+
 ## Sommaire
 
 1. [Installer l'appli sur l'iPhone](#1-installer-lappli-sur-liphone)

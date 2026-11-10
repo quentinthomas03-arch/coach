@@ -84,7 +84,7 @@ describe('voix du coach', () => {
   it('en pause : aucun reproche', () => {
     const base = { sessions: [sess(2, 'endurance', 'missed'), sess(4, 'endurance', 'missed')] }
     expect(rules(ctx({ ...base, paused: true }))).not.toContain('sorties-manquees')
-    expect(rules(ctx({ ...base, notice: ['Bon retour !'] }))).toContain('notice')
+    expect(rules(ctx({ ...base, notice: ['Bon retour !', 'Doucement'] }))).toEqual(expect.arrayContaining(['notice-0', 'notice-1']))
   })
   it('surcharge prolongée', () => {
     expect(rules(ctx({ overload: { active: true, reasons: ['charge de travail très élevée (1,8/5 en moyenne)'] } }))).toContain('surcharge')

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { DayAvailability, EquipmentId, PlannedSession } from '../data/types'
 import { addDays, weekdayIndex } from './dates'
 import { planWeek, spreadDays, type WeekPlanInput } from './planner'
+import { goalWeekTemplates } from './goalPlan'
+import type { Goal } from './goals'
 
 const HOME: EquipmentId[] = ['tapis', 'kettlebell', 'elastiques', 'roue-abdos', 'escalier', 'mur']
 const MONDAY = '2026-11-16'
@@ -158,5 +160,26 @@ describe('planWeek', () => {
     const { sessions } = planWeek(input({ mode: 'forme', formeBaseMinutes: 160, weekIndex: 3 }))
     expect(sessions.some((s) => s.kind === 'fractionne')).toBe(false)
     expect(sessions.filter((s) => s.kind !== 'renfo').reduce((a, s) => a + s.durationMin, 0)).toBeLessThanOrEqual(125)
+  })
+
+  const goal: Goal = { id: 'g', type: 'route', distance: '10k', targetTimeSec: 2700, date: addDays(MONDAY, 6), createdAt: '' }
+
+  it('objectif : séances clés jamais collées, longue le dimanche', () => {
+    const t = goalWeekTemplates({ goal, phase: 'specifique', weekInPhase: 0, minutes: 200, runs: 4, vdot: 44, deload: false })
+    const { sessions } = planWeek(input({ mode: 'objectif', goalTemplates: t, runsPerWeek: 4 }))
+    const keys = days(sessions, (s) => !!s.key).sort()
+    for (let i = 1; i < keys.length; i++) expect(keys[i] - keys[i - 1]).toBeGreaterThan(1)
+    expect(sessions.find((s) => s.kind === 'sortie-longue')!.date).toBe(addDays(MONDAY, 6))
+    expect(sessions.some((s) => s.workoutText?.includes('/km Pace'))).toBe(true)
+  })
+
+  it('semaine de course : la course le jour J même s’il est indisponible, rien la veille', () => {
+    const t = goalWeekTemplates({ goal, phase: 'course', weekInPhase: 0, minutes: 80, runs: 3, vdot: 44, deload: false })
+    const { sessions } = planWeek(input({ mode: 'objectif', goalTemplates: t, raceDate: goal.date, availability: avail([60, 60, 60, 60, 60, 60, 0]) }))
+    const race = sessions.find((s) => s.kind === 'test')!
+    expect(race.date).toBe(goal.date)
+    expect(race.title).toBe('Course objectif')
+    expect(sessions.filter((s) => s.kind !== 'renfo').some((s) => s.date === addDays(goal.date, -1))).toBe(false)
+    expect(strengthDays(sessions)).not.toContain(5)
   })
 })

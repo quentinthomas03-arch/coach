@@ -212,7 +212,7 @@ export function goalWeekTemplates(i: GoalWeekInput): FormeSessionTemplate[] {
     const easyCount = Math.min(2, i.runs - 1)
     for (let k = 0; k < easyCount; k++) {
       const w = k === 0 ? racePaceWorkout(3, 2, c) : steady('Footing très facile', 25, c)
-      out.push(tpl(k === 0 ? 'fractionne' : 'endurance', k === 0 ? 'Rappel d’allure' : 'Footing de veille', w, false, k === 0 ? 'Semaine de course : quelques minutes à allure course pour garder les sensations, sans fatigue.' : 'Délier les jambes avant le jour J.'))
+      out.push(tpl(k === 0 ? 'fractionne' : 'endurance', k === 0 ? 'Rappel d’allure' : 'Footing léger', w, false, k === 0 ? 'Semaine de course : quelques minutes à allure course pour garder les sensations, sans fatigue.' : 'Délier les jambes, sans fatigue.'))
     }
     return out
   }

@@ -39,3 +39,16 @@ Quand je saisis un objectif, le coach doit me dire, avec ses raisons :
 - Bouton « SOS envie » : exercice de respiration de 2 min, mini-activité, rappel de mes raisons d'arrêter.
 - Le coach encourage et recadre sans culpabiliser ; une rechute n'est pas un échec : on note, on repart.
 - Orientation vers les professionnels : Tabac info service (39 89, gratuit), médecin, pharmacien ou sage-femme pour les substituts nicotiniques (remboursés sur prescription). Aucun conseil médical dans l'appli.
+
+## Nutrition : recettes, courses, panier du maraîcher (Phase 4)
+- **Conseils et recettes** adaptés à ma semaine d'entraînement (plus de glucides la veille d'une sortie longue, protéines après le renfo…), en respectant mes exclusions (œufs non transformés, saumon, fruits exotiques).
+- **Menu de la semaine à venir** proposé le dimanche avec mes dispos, modifiable plat par plat.
+- **Liste de courses** générée depuis le menu, regroupée par rayon, cochable en magasin, partageable (menu de partage iOS).
+- **Panier du maraîcher** : je saisis en quelques taps les légumes achetés (liste des légumes de saison pré-remplie selon le mois) → l'appli propose des recettes qui les utilisent en priorité, et rappelle ceux à consommer vite.
+- Base de recettes intégrée à l'appli (pas d'IA) : recettes simples, rapides en semaine, avec ingrédients, temps, portions et valeurs nutritionnelles calculées via Ciqual.
+
+## Idées du coach à proposer (initiatives)
+- Bilan du dimanche soir en 30 s : dispos de la semaine + aperçu du plan + menu + liste de courses, en un seul écran.
+- « Batch cooking » du dimanche : 2-3 préparations qui couvrent plusieurs repas de la semaine.
+- Repères de récupération après une séance dure (collation, sommeil) affichés sur l'écran Aujourd'hui.
+- Calendrier des fruits et légumes de saison (France) intégré.

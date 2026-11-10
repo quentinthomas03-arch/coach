@@ -112,6 +112,7 @@ export interface Activity {
   load?: number
   rpe?: number
   matchedSessionId?: string
+  name?: string
   raw?: unknown
 }
 

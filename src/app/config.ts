@@ -13,6 +13,10 @@ export interface PlanConfig {
   longRunWeekday: number
   repriseLevel: number
   strengthLevel: number
+  /** reprise (par défaut) puis forme continue, une fois la reprise validée. */
+  mode?: 'reprise' | 'forme'
+  /** Forme continue : volume de course d'une semaine de charge (min). */
+  formeBaseMinutes?: number
   /** Dernière semaine (lundi) dont le bilan a été appliqué. */
   lastReviewedWeek?: ISODate
   /** auto = changements appliqués avec possibilité d'annuler ; valider = je valide d'abord. */

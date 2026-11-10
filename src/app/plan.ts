@@ -4,6 +4,7 @@ import { addDays, daysBetween, mondayOf } from '../domain/dates'
 import { diffSessions } from '../domain/changes'
 import { planWeek } from '../domain/planner'
 import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
+import { nextBaseMinutes } from '../domain/forme'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
 
@@ -43,15 +44,27 @@ export async function applyWeeklyReviews(today: ISODate, database: CoachDB = db)
   let week = cfg.lastReviewedWeek ? addDays(cfg.lastReviewedWeek, 7) : firstWeek
   const decisions: LevelDecision[] = []
   const [sessions, feedback, checkins] = await Promise.all([database.sessions.toArray(), database.feedback.toArray(), database.checkins.toArray()])
-  let { repriseLevel, strengthLevel } = cfg
+  let { repriseLevel, strengthLevel, mode = 'reprise', formeBaseMinutes } = cfg
   let prevStrength
   while (week < currentWeek) {
     const run = reviewWeek(week, sessions, feedback, checkins, 'course')
     const str = reviewWeek(week, sessions, feedback, checkins, 'renfo')
-    if (run.planned > 0) {
+    if (run.planned > 0 && mode === 'reprise') {
       const d = nextLevel(repriseLevel, run)
       repriseLevel = d.level
       decisions.push(d)
+      if (d.completed) {
+        // Passage en Forme continue : on part du volume de course de cette dernière semaine.
+        const end = addDays(week, 7)
+        mode = 'forme'
+        formeBaseMinutes = Math.max(90, sessions.filter((s) => s.date >= week && s.date < end && isRunSession(s)).reduce((a, s) => a + s.durationMin, 0))
+      }
+    } else if (run.planned > 0 && mode === 'forme') {
+      const { days } = await getAvailability(addDays(week, 7), database)
+      const maxAvail = days.filter((d) => d.available).map((d) => d.maxMinutes).sort((a, b) => b - a).slice(0, cfg.runsPerWeek).reduce((a, b) => a + b, 0)
+      const n = nextBaseMinutes(formeBaseMinutes ?? 120, run, weekIndexOf(cfg.startDate, week), maxAvail)
+      decisions.push({ level: repriseLevel, change: n.minutes > (formeBaseMinutes ?? 120) ? 'monte' : n.minutes < (formeBaseMinutes ?? 120) ? 'baisse' : 'stable', reason: n.reason })
+      formeBaseMinutes = n.minutes
     }
     if (str.planned > 0) {
       strengthLevel = nextStrengthLevel(strengthLevel, str, prevStrength).level
@@ -61,7 +74,7 @@ export async function applyWeeklyReviews(today: ISODate, database: CoachDB = db)
     week = addDays(week, 7)
   }
   if (decisions.length || cfg.repriseLevel !== repriseLevel || cfg.strengthLevel !== strengthLevel) {
-    await savePlanConfig({ ...cfg, repriseLevel, strengthLevel }, database)
+    await savePlanConfig({ ...cfg, repriseLevel, strengthLevel, mode, formeBaseMinutes }, database)
     await setSetting(KEYS.lastDecisions, { at: today, decisions }, database)
   } else if (cfg.lastReviewedWeek) await savePlanConfig(cfg, database)
   return decisions
@@ -99,6 +112,8 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       equipment,
       existing,
       ranPreviousSunday: prevSunday.some((s) => isRunSession(s) && s.status !== 'skipped'),
+      mode: cfg.mode ?? 'reprise',
+      formeBaseMinutes: cfg.formeBaseMinutes,
     })
     before.push(...existing)
     after.push(...plan.sessions.map((s) => mergeSync(s, existing.find((e) => e.id === s.id))))

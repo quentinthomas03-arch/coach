@@ -21,6 +21,24 @@ export function PlanScreen() {
   return (
     <div className="space-y-4">
       <PageTitle sub={started ? `Semaine ${week} · ${done} séance(s) faite(s)` : `Début le ${formatLongFr(cfg.startDate)}`}>Mon plan</PageTitle>
+      {cfg.mode === 'forme' ? (
+        <section className="card">
+          <p className="text-sm text-muted">Mode actuel</p>
+          <h2 className="display text-2xl">Forme continue</h2>
+          <p className="mt-1">
+            Semaine <strong className="num">{(weekIndexOf(cfg.startDate, mondayOf(today)) % 4) + 1}/4</strong> du cycle · volume de base{' '}
+            <strong className="num">{cfg.formeBaseMinutes} min</strong> de course
+          </p>
+          <div className="flex gap-1 mt-3" aria-hidden>
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={`h-2 flex-1 rounded-full ${i === weekIndexOf(cfg.startDate, mondayOf(today)) % 4 ? 'bg-accent-ink' : 'bg-line'}`} />
+            ))}
+          </div>
+          <p className="text-sm text-muted mt-3">
+            3 semaines de charge (+8 % max par semaine validée) puis 1 semaine allégée. Une séance un peu plus soutenue en semaines 2 et 3.
+          </p>
+        </section>
+      ) : (
       <section className="card">
         <p className="text-sm text-muted">Mode actuel</p>
         <h2 className="display text-2xl">Reprise en douceur</h2>
@@ -36,6 +54,7 @@ export function PlanScreen() {
           Objectif de la reprise : 30 min de course continue, sans douleur. Ensuite : mode Forme continue, puis un test pour calibrer tes allures.
         </p>
       </section>
+      )}
       <section className="card">
         <p className="text-sm text-muted">Renfo</p>
         <p>

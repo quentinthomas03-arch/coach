@@ -121,8 +121,16 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
     )
   }
 
-  // 7. Montée de niveau.
-  if (ctx.levelDecision?.change === 'monte') {
+  // 7. Reprise terminée / montée de niveau.
+  if (ctx.levelDecision?.completed) {
+    out.push(
+      say('reprise-terminee', 'bravo', {
+        bienveillant: 'Reprise terminée : tu cours 30 minutes d’affilée ! On passe en Forme continue, avec une petite séance plus tonique certaines semaines.',
+        direct: 'Reprise validée : 30 min continues. On passe en Forme continue : cycles de 3 semaines de charge + 1 allégée.',
+        cash: 'Reprise bouclée. Tu n’es plus en reprise, tu t’entraînes. Forme continue, c’est parti.',
+      }, tone),
+    )
+  } else if (ctx.levelDecision?.change === 'monte') {
     out.push(
       say('niveau-monte', 'bravo', {
         bienveillant: `Tu passes au niveau ${ctx.levelDecision.level} de la reprise. Bien joué !`,

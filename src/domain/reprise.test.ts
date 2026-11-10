@@ -55,7 +55,8 @@ describe('progression de niveau', () => {
     expect(nextLevel(1, { planned: 3, done: 0, pain: false })).toMatchObject({ level: 1, change: 'stable' })
   })
   it('plafonne au dernier niveau', () => {
-    expect(nextLevel(9, { planned: 3, done: 3, avgRpe: 4, pain: false }).level).toBe(9)
+    expect(nextLevel(9, { planned: 3, done: 3, avgRpe: 4, pain: false })).toMatchObject({ level: 9, completed: true })
+    expect(nextLevel(9, { planned: 3, done: 1, pain: false }).completed).toBeUndefined()
   })
   it('semaine allégée toutes les 4 semaines', () => {
     expect([0, 1, 2, 3, 4, 7].map(isDeloadWeek)).toEqual([false, false, false, true, false, true])

@@ -111,6 +111,8 @@ export interface LevelDecision {
   level: number
   change: 'monte' | 'stable' | 'baisse'
   reason: string
+  /** Vrai quand la reprise est terminée (dernier niveau validé) : passage en Forme continue. */
+  completed?: boolean
 }
 
 /**
@@ -136,7 +138,7 @@ export function nextLevel(current: number, review: WeekReview): LevelDecision {
     return { level: cur, change: 'stable', reason: `Effort ressenti élevé (${review.avgRpe.toFixed(1)}/10) : on reste au même niveau.` }
   }
   if (cur >= MAX_REPRISE_LEVEL) {
-    return { level: cur, change: 'stable', reason: 'Reprise terminée : 30 min de course continue validées.' }
+    return { level: cur, change: 'stable', reason: 'Reprise terminée : 30 min de course continue validées. Place à la Forme continue !', completed: true }
   }
   return { level: cur + 1, change: 'monte', reason: `Semaine validée (${review.done}/${review.planned} séances, effort maîtrisé) : on monte d’un niveau.` }
 }

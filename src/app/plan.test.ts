@@ -92,6 +92,29 @@ describe('service du plan', () => {
   })
 })
 
+describe('passage en forme continue', () => {
+  it('reprise validée au niveau 9 → forme continue, puis volume +8 % après une bonne semaine', async () => {
+    await savePlanConfig(cfg({ repriseLevel: 9 }), database)
+    await regenerate('Création', MONDAY, database)
+    const week1 = (await database.sessions.toArray()).filter((s) => s.kind !== 'renfo' && s.date < addDays(MONDAY, 7))
+    for (const r of week1) await markDone(r.id, 4, database)
+    const d = await applyWeeklyReviews(addDays(MONDAY, 7), database)
+    expect(d[0].completed).toBe(true)
+    const c = (await database.settings.get(KEYS.plan))!.value as PlanConfig
+    expect(c.mode).toBe('forme')
+    const base = c.formeBaseMinutes!
+    expect(base).toBe(week1.reduce((a, s) => a + s.durationMin, 0))
+
+    await regenerate('Semaine 2', addDays(MONDAY, 7), database)
+    const week2 = (await database.sessions.toArray()).filter((s) => s.kind !== 'renfo' && s.date >= addDays(MONDAY, 7) && s.date < addDays(MONDAY, 14))
+    expect(week2.some((s) => s.kind === 'fractionne')).toBe(true) // semaine 2 du cycle
+    for (const r of week2) await markDone(r.id, 5, database)
+    await applyWeeklyReviews(addDays(MONDAY, 14), database)
+    const c2 = (await database.settings.get(KEYS.plan))!.value as PlanConfig
+    expect(c2.formeBaseMinutes).toBe(Math.round(base * 1.08))
+  })
+})
+
 describe('envoi sur la montre', () => {
   it('envoie seulement les courses des 7 prochains jours, puis marque envoyé', async () => {
     await regenerate('Création', MONDAY, database)

@@ -64,6 +64,9 @@ describe('voix du coach', () => {
     const m = coachMessages(ctx({ tabac: { phase: 'sans-tabac', daysSmokeFree: 7, cigarettesAvoided: 70, moneySaved: 43.75, relapsed: false, reached: [] } }))
     expect(m.find((x) => x.rule === 'tabac-palier')!.text).toMatch(/7 jours/)
   })
+  it('félicite la fin de la reprise', () => {
+    expect(rules(ctx({ levelDecision: { level: 9, change: 'stable', reason: '', completed: true } }))).toContain('reprise-terminee')
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

@@ -100,7 +100,7 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
 
   // 5. Check du matin oublié.
   const lastCheck = ctx.checkins.map((c) => c.date).filter((d) => d <= today).sort().pop()
-  if (!lastCheck || daysBetween(lastCheck, today) >= 3) {
+  if (lastCheck && daysBetween(lastCheck, today) >= 3) {
     out.push(
       say('check-oublie', 'info', {
         bienveillant: 'Ton check du matin m’aide à adapter tes séances. 15 secondes quand tu peux !',

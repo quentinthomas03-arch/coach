@@ -48,6 +48,8 @@ describe('voix du coach', () => {
   it('relance si pas de check depuis 3 jours', () => {
     expect(rules(ctx({ checkins: [check(3)] }))).toContain('check-oublie')
     expect(rules(ctx({ checkins: [check(1)] }))).not.toContain('check-oublie')
+    // Premier jour : pas de reproche.
+    expect(rules(ctx({ checkins: [] }))).not.toContain('check-oublie')
   })
   it('le ton change le texte, pas la règle', () => {
     const base = { sessions: [sess(2, 'endurance', 'missed'), sess(4, 'endurance', 'missed')] }

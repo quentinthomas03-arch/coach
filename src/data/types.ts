@@ -68,6 +68,9 @@ export type SessionKind =
   | 'renfo'
   | 'repos'
 
+import type { Workout } from '../domain/workout'
+import type { StrengthSession } from '../domain/strength'
+
 export type SessionStatus = 'planned' | 'done' | 'missed' | 'moved' | 'skipped'
 export type SyncStatus = 'not-sent' | 'sent' | 'error' | 'outdated'
 
@@ -87,6 +90,14 @@ export interface PlannedSession {
   externalId: string
   sync: { status: SyncStatus; at?: ISODateTime; error?: string; intervalsEventId?: number }
   planVersionId?: number
+  /** Séance clé (sortie longue, qualité) : pas de renfo la veille. */
+  key?: boolean
+  /** Verrouillée par moi : le moteur ne la modifie et ne la déplace jamais. */
+  locked?: boolean
+  /** Qui a créé ou modifié la séance en dernier. */
+  origin?: 'moteur' | 'moi'
+  workout?: Workout
+  strength?: StrengthSession
 }
 
 export interface Activity {

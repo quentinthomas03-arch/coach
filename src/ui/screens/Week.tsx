@@ -196,7 +196,7 @@ export function Week() {
         {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((d, i) => {
           const list = (sessions ?? []).filter((s) => s.date === d)
           return (
-            <li key={d} className={`card py-3 ${d === today ? 'ring-2 ring-accent-ink' : ''} ${d < today ? 'opacity-70' : ''}`}>
+            <li key={d} className={`card py-3 ${d === today ? 'ring-2 ring-accent-ink' : ''} ${d < today ? 'bg-surface2' : ''}`}>
               <p className="text-sm font-semibold text-muted">
                 {DAY_NAMES[i]} {Number(d.slice(8))}
               </p>

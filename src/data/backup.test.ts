@@ -71,6 +71,22 @@ describe('sauvegarde', () => {
     expect((await b.settings.get(SETTING.intervalsAthleteId))?.value).toBe('i12345')
   })
 
+  it('garde objectif, performances, menu, panier et réglages nutrition', async () => {
+    await seed(a)
+    await a.settings.bulkPut([
+      { key: 'goal.current', value: { id: 'g', type: 'route', distance: '10k', date: '2027-04-11' } },
+      { key: 'perf.list', value: [{ id: 'p', date: '2026-03-15', distanceM: 21097.5, timeSec: 6000, source: 'record' }] },
+      { key: 'menu.2026-11-16', value: { days: [], checked: ['9104'] } },
+      { key: 'basket.items', value: [{ produce: 'poireau', addedAt: '2026-11-15' }] },
+      { key: 'nutrition.config', value: { activity: 'sedentaire', goal: 'maintien', weather: true } },
+      { key: 'tabac.config', value: { quitDate: '2027-01-01', cigsPerDayBefore: 10, packPrice: 12.5, cigsPerPack: 20, reasons: [] } },
+    ])
+    await importBackup(parseBackup(JSON.stringify(await exportBackup(a))), b)
+    for (const k of ['goal.current', 'perf.list', 'menu.2026-11-16', 'basket.items', 'nutrition.config', 'tabac.config']) {
+      expect((await b.settings.get(k))?.value).toEqual((await a.settings.get(k))?.value)
+    }
+  })
+
   it("n'exporte jamais la clé d'API", async () => {
     await seed(a)
     const json = JSON.stringify(await exportBackup(a))

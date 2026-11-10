@@ -83,7 +83,7 @@ function CheckinCard({ today, initial, tabacPrep }: { today: string; initial?: M
       {tabacPrep && (
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Cigarettes hier</span>
-          <input type="number" inputMode="numeric" min={0} className="field w-24 text-center" value={c.cigarettes ?? ''} onChange={(e) => setC({ ...c, cigarettes: e.target.value === '' ? undefined : Number(e.target.value) })} />
+          <input type="number" inputMode="numeric" min={0} aria-label="Cigarettes fumées hier" className="field w-24 text-center" value={c.cigarettes ?? ''} onChange={(e) => setC({ ...c, cigarettes: e.target.value === '' ? undefined : Number(e.target.value) })} />
         </div>
       )}
       <Choice cols={2} value={pain ? 'oui' : 'non'} onChange={(v) => setPain(v === 'oui')} label="Une douleur ?" options={[{ value: 'non', label: 'Non' }, { value: 'oui', label: 'Oui' }]} />
@@ -246,6 +246,28 @@ function TabacCard({ view }: { view: TodayView }) {
   )
 }
 
+/** Le dimanche (et le samedi soir) : préparer la semaine suivante en 30 secondes. */
+function SundayCard() {
+  const wd = new Date().getDay()
+  const hour = new Date().getHours()
+  if (!(wd === 0 || (wd === 6 && hour >= 17))) return null
+  return (
+    <section className="card space-y-2" aria-label="Préparer la semaine">
+      <h2 className="display text-lg">Prépare ta semaine</h2>
+      <p className="text-sm text-muted">30 secondes : tes dispos, un œil sur le plan, puis le menu et la liste de courses.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Link to="/semaine" className="btn-secondary">
+          Dispos et plan
+        </Link>
+        <Link to="/nutrition" className="btn-secondary">
+          Menu et courses
+        </Link>
+      </div>
+      <p className="text-xs text-muted">Pense aussi à sauvegarder (Réglages) si ça fait un moment.</p>
+    </section>
+  )
+}
+
 function NutritionCard({ today }: { today: string }) {
   const d = useResults(() => nutritionDay(today), [today])
   if (!d || !d.targets) return null
@@ -345,6 +367,7 @@ export function Today() {
           ))}
         </section>
       )}
+      <SundayCard />
       <NutritionCard today={today} />
       <TabacCard view={view} />
     </div>

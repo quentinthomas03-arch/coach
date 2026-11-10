@@ -37,7 +37,7 @@ describe('rapprochement', () => {
   })
   it('sortie en plus et vélo : pas de rapprochement', () => {
     const r = matchActivities([act('a', '2026-11-25'), act('v', '2026-11-17', 'Ride')], plan)
-    expect(r.extras).toEqual(['v', 'a'].sort((x, y) => (x === 'v' ? -1 : 1)))
+    expect(r.extras.sort()).toEqual(['a', 'v'])
     expect(r.matches).toEqual([])
   })
   it('une séance n’est rapprochée qu’une fois ; une activité déjà rapprochée est gardée', () => {

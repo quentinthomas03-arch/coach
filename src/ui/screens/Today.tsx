@@ -5,6 +5,8 @@ import type { MorningCheckin, PlannedSession } from '../../data/types'
 import { db } from '../../data/db'
 import { dismissProposal, loadToday, type TodayView } from '../../app/daily'
 import { applyProposal, markDone, markMissed } from '../../app/plan'
+import { saveActivityRpe } from '../../app/importer'
+import { activityLabel } from '../../domain/activities'
 import { syncToWatch } from '../../app/sync'
 import { formatLongFr, todayISO } from '../../domain/dates'
 import type { CoachMessage } from '../../domain/coach'
@@ -249,6 +251,20 @@ export function Today() {
         <h1 className="display text-3xl leading-tight">{greeting()}</h1>
       </div>
       <Messages list={view.messages} />
+      {view.awaitingRpe.map((a) => (
+        <section key={a.id} className="card" aria-label="Séance détectée">
+          <p className="text-sm text-muted">Séance détectée sur ta montre</p>
+          <p className="font-semibold">{activityLabel(a)}</p>
+          <p className="text-sm font-medium mt-2 mb-1.5">C’était dur comment ? (1 = très facile, 10 = à bloc)</p>
+          <div className="grid grid-cols-5 gap-1.5">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+              <button key={n} className="h-11 rounded-btn bg-surface2 border border-line num font-semibold" onClick={() => saveActivityRpe(a.id, n)}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
       {!view.checkin ? <CheckinCard today={today} tabacPrep={view.tabac?.phase === 'preparation'} /> : <ReadinessBadge view={view} />}
       {view.todaySessions.length ? (
         view.todaySessions.map((s) => <SessionCard key={s.id} s={s} view={view} />)

@@ -8,10 +8,15 @@ import { tabacStatus, type TabacStatus } from '../domain/tabac'
 import { getPlanConfig, getTabac, KEYS } from './config'
 import { applyWeeklyReviews, regenerate } from './plan'
 import { syncToWatch, type SyncResult } from './sync'
+import { activitiesAwaitingRpe, importFromIntervals } from './importer'
+import { buildLoadEntries, loadStatus, type LoadStatus } from '../domain/load'
+import type { Activity } from '../data/types'
 
 /** Routine à l'ouverture de l'appli : bilan hebdo, recalcul, envoi montre. */
 export async function dailyRefresh(today: ISODate): Promise<{ sync?: SyncResult }> {
   if (!(await getPlanConfig())) return {}
+  // 1. Ce que j'ai fait (Garmin → Intervals.icu → appli), avant tout bilan.
+  await importFromIntervals(today).catch(() => undefined)
   const decisions = await applyWeeklyReviews(today)
   // Les séances passées non faites sont marquées « non faites ».
   const stale = await db.sessions.where('date').below(today).filter((s) => s.status === 'planned' && s.kind !== 'repos').toArray()
@@ -33,6 +38,8 @@ export interface TodayView {
   messages: CoachMessage[]
   tabac?: TabacStatus
   tabacReasons: string[]
+  awaitingRpe: Activity[]
+  load: LoadStatus
 }
 
 export async function loadToday(today: ISODate): Promise<TodayView> {
@@ -60,7 +67,13 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   const tabac = tabacCfg ? tabacStatus(tabacCfg, logs, today) : undefined
   const last = await getSetting<{ at: ISODate; decisions: LevelDecision[] }>(KEYS.lastDecisions)
   const levelDecision = last && last.at >= addDays(today, -2) ? last.decisions[last.decisions.length - 1] : undefined
-  const messages = cfg ? coachMessages({ today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac }) : []
+  const [acts, allSessions, feedback] = await Promise.all([
+    db.activities.where('date').between(addDays(today, -35), today, true, true).toArray(),
+    db.sessions.where('date').between(addDays(today, -35), today, true, true).toArray(),
+    db.feedback.where('date').between(addDays(today, -35), today, true, true).toArray(),
+  ])
+  const load = loadStatus(buildLoadEntries(acts, allSessions, feedback), today)
+  const messages = cfg ? coachMessages({ today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts }) : []
   return {
     today,
     sessions,
@@ -72,6 +85,8 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     messages,
     tabac,
     tabacReasons: tabacCfg?.reasons ?? [],
+    awaitingRpe: await activitiesAwaitingRpe(today),
+    load,
   }
 }
 

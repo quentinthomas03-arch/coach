@@ -67,6 +67,10 @@ describe('voix du coach', () => {
   it('félicite la fin de la reprise', () => {
     expect(rules(ctx({ levelDecision: { level: 9, change: 'stable', reason: '', completed: true } }))).toContain('reprise-terminee')
   })
+  it('relaie les garde-fous de charge en alerte', () => {
+    const m = coachMessages(ctx({ loadAlerts: [{ rule: 'volume', text: 'Volume +30 %.' }] }))
+    expect(m[0]).toMatchObject({ rule: 'charge-volume', kind: 'alerte', text: 'Stop, tu montes trop vite. Volume +30 %.' })
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

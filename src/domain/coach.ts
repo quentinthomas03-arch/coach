@@ -31,6 +31,8 @@ export interface CoachContext {
   readiness?: Readiness
   levelDecision?: LevelDecision
   tabac?: TabacStatus
+  /** Alertes des garde-fous de charge (voir load.ts). */
+  loadAlerts?: { rule: 'acwr' | 'volume'; text: string }[]
 }
 
 type Variants = Record<Tone, string>
@@ -61,6 +63,12 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
         cash: `${painDays} jours que ça fait mal. Stop, tu vas voir un médecin ou un kiné. Courir dessus, c'est signer pour des semaines d'arrêt.`,
       }, tone),
     )
+  }
+
+  // 1 bis. Garde-fous de charge.
+  for (const a of ctx.loadAlerts ?? []) {
+    const lead: Variants = { bienveillant: 'Attention : ', direct: 'Stop, tu montes trop vite. ', cash: 'Freine. ' }
+    out.push({ rule: `charge-${a.rule}`, kind: 'alerte', text: lead[tone] + a.text })
   }
 
   // 2. Sorties manquées.

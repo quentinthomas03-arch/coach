@@ -8,6 +8,7 @@ import { explainError, IntervalsClient, validateCredentials } from '../../integr
 import { logSync, SETTING_RELAY_URL } from '../../integrations/intervalsStore'
 import { DisclaimerText } from '../components/Disclaimer'
 import { PageTitle } from '../Layout'
+import { PlanSettings } from './PlanSettings'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -238,6 +239,7 @@ export function Settings() {
   return (
     <div>
       <PageTitle>Réglages</PageTitle>
+      <PlanSettings />
       <IntervalsSection />
       <BackupSection />
       <StorageSection />

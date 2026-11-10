@@ -52,10 +52,21 @@ export async function allFoods(database: CoachDB = db): Promise<FoodItem[]> {
 
 /* ---------- Journal ---------- */
 
-export async function addFood(date: ISODate, meal: Meal, food: FoodItem, grams: number, database: CoachDB = db) {
+/**
+ * Ajoute un aliment au journal. `rememberPortion` : si j'ai donné un poids exact,
+ * il devient ma portion habituelle pour cet aliment.
+ */
+export async function addFood(date: ISODate, meal: Meal, food: FoodItem, grams: number, database: CoachDB = db, rememberPortion = true) {
   const v = forGrams(food, grams)
   const known = await database.foods.get(food.id)
-  await database.foods.put({ ...food, ...known, favorite: known?.favorite ?? food.favorite, usageCount: (known?.usageCount ?? 0) + 1, lastUsedAt: new Date().toISOString(), portionG: grams })
+  await database.foods.put({
+    ...food,
+    ...known,
+    favorite: known?.favorite ?? food.favorite,
+    usageCount: (known?.usageCount ?? 0) + 1,
+    lastUsedAt: new Date().toISOString(),
+    portionG: rememberPortion ? grams : known?.portionG ?? food.portionG,
+  })
   await database.foodLog.add({ date, meal, foodId: food.id, name: food.name, grams, ...v, at: new Date().toISOString() })
 }
 

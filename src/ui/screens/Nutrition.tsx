@@ -6,7 +6,10 @@ import { AddFood } from '../components/AddFood'
 import { Gauge } from '../components/Segmented'
 import { useDbQuery } from '../useDbQuery'
 import { PageTitle } from '../Layout'
-import { CoursesTab, MenuTab, PanierTab } from './NutritionPlanning'
+import { MenuTab, PanierTab } from './NutritionPlanning'
+import { getMenu, logRecipe } from '../../app/menu'
+import { mondayOf } from '../../domain/dates'
+import { recipeById } from '../../domain/recipes'
 
 const DAY_TYPE = { repos: 'Jour de repos', leger: 'Jour d’entraînement léger', soutenu: 'Jour d’entraînement soutenu' }
 const L = (ml: number) => `${(ml / 1000).toFixed(2).replace('.', ',')} L`
@@ -27,11 +30,10 @@ export function WaterButtons({ date, bottleMl = 500 }: { date: string; bottleMl?
   )
 }
 
-type Tab = 'journal' | 'menu' | 'courses' | 'panier'
+type Tab = 'journal' | 'menu' | 'panier'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'menu', label: 'Menu' },
-  { id: 'courses', label: 'Courses' },
   { id: 'panier', label: 'Panier' },
 ]
 
@@ -39,7 +41,7 @@ export function Nutrition() {
   const [tab, setTab] = useState<Tab>('journal')
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-1 p-1 rounded-btn bg-surface2 border border-line" role="tablist" aria-label="Nutrition">
+      <div className="grid grid-cols-3 gap-1 p-1 rounded-btn bg-surface2 border border-line" role="tablist" aria-label="Nutrition">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={`min-h-[40px] rounded-[12px] text-sm font-semibold ${tab === t.id ? 'bg-surface shadow text-ink' : 'text-muted'}`}>
             {t.label}
@@ -48,7 +50,6 @@ export function Nutrition() {
       </div>
       {tab === 'journal' && <Journal />}
       {tab === 'menu' && <MenuTab />}
-      {tab === 'courses' && <CoursesTab />}
       {tab === 'panier' && <PanierTab />}
     </div>
   )
@@ -64,6 +65,7 @@ function Journal() {
   }, [today])
   const day = useDbQuery(() => nutritionDay(date, date === today ? tmax : undefined), [date, tmax])
   const saved = useDbQuery(() => getSavedMeals(), [])
+  const menuDay = useDbQuery(async () => (await getMenu(mondayOf(date)))?.days.find((d) => d.date === date), [date])
   if (!day) return null
   const t = day.targets
 
@@ -166,6 +168,17 @@ function Journal() {
                 </li>
               ))}
             </ul>
+            {(() => {
+              const planned = m.id === 'dejeuner' ? menuDay?.lunch : m.id === 'diner' ? menuDay?.dinner : undefined
+              const r = planned ? recipeById(planned.recipeId) : undefined
+              if (!r || list.some((e) => e.foodId === `recette-${r.id}`)) return null
+              return (
+                <button className="w-full text-left mt-2 rounded-btn border border-accent-ink/40 bg-accent/15 px-3 py-2 min-h-[48px]" onClick={() => logRecipe(r.id, date, m.id)}>
+                  <span className="block text-xs text-muted">Au menu</span>
+                  <span className="block font-semibold">{r.name} · Je l’ai mangé</span>
+                </button>
+              )
+            })()}
             <div className="grid grid-cols-2 gap-2 mt-2">
               <button className="btn-primary" onClick={() => setAdding(m.id)}>
                 + Ajouter

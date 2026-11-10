@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { buildMenu, clearBasket, getBasket, getMenu, logRecipe, nutrientTable, setIncludePantry, setMeal, shoppingFor, thisMonday, toggleBasket, toggleChecked } from '../../app/menu'
+import { buildMenu, clearBasket, getBasket, getMenu, logRecipe, nutrientTable, setMeal, thisMonday, toggleBasket } from '../../app/menu'
 import { MEALS, type Meal } from '../../app/nutrition'
 import { addDays, formatLongFr, parseISODate, todayISO } from '../../domain/dates'
-import { basketIdeas, formatQty, recipeNutrients, RAYON_ORDER, shoppingText, type NutrientTable } from '../../domain/menu'
+import { basketIdeas, formatQty, recipeNutrients, type NutrientTable } from '../../domain/menu'
 import { RECIPES, recipeById, type Recipe } from '../../domain/recipes'
 import { PRODUCE, inSeason } from '../../domain/seasons'
 import { useDbQuery } from '../useDbQuery'
@@ -166,69 +166,6 @@ export function MenuTab() {
   )
 }
 
-export function CoursesTab() {
-  const today = todayISO()
-  const monday = thisMonday(today)
-  const data = useDbQuery(() => shoppingFor(monday, today), [monday, today])
-  const [msg, setMsg] = useState('')
-  if (!data) return <section className="card">Commence par proposer le menu de la semaine (onglet Menu) : la liste de courses en découle.</section>
-  const { items, checked } = data
-  const toBuy = items.filter((i) => !i.inBasket)
-  const share = async () => {
-    const text = shoppingText(items, checked)
-    try {
-      if (navigator.share) await navigator.share({ title: 'Liste de courses', text })
-      else {
-        await navigator.clipboard.writeText(text)
-        setMsg('Liste copiée.')
-      }
-    } catch {
-      /* partage annulé */
-    }
-  }
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <button className="btn-primary" onClick={share}>
-          Partager la liste
-        </button>
-        <button className="btn-secondary" onClick={() => setIncludePantry(monday, !data.includePantry)}>
-          {data.includePantry ? 'Sans le placard' : 'Avec le placard'}
-        </button>
-      </div>
-      {msg && <p role="status" className="text-sm text-ok">{msg}</p>}
-      <p className="text-sm text-muted">
-        {toBuy.filter((i) => !checked.has(i.key)).length} article(s) à acheter pour les repas à venir (1 personne). Féculents en poids sec.
-      </p>
-      {RAYON_ORDER.map((r) => {
-        const list = items.filter((i) => i.rayon === r)
-        if (!list.length) return null
-        return (
-          <section key={r} className="card py-2">
-            <h3 className="font-semibold py-1">{r}</h3>
-            <ul>
-              {list.map((i) => {
-                const done = checked.has(i.key) || i.inBasket
-                return (
-                  <li key={i.key} className="border-t border-line">
-                    <button className="w-full flex items-center gap-3 py-2 min-h-[48px] text-left" disabled={i.inBasket} onClick={() => toggleChecked(monday, i.key)} aria-pressed={done}>
-                      <span aria-hidden className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 ${done ? 'bg-accent-ink border-accent-ink text-white' : 'border-line'}`}>
-                        {done ? '✓' : ''}
-                      </span>
-                      <span className={`flex-1 ${done ? 'line-through text-muted' : ''}`}>{i.name}</span>
-                      <span className="num text-sm text-muted">{i.inBasket ? 'dans le panier' : formatQty(i.grams)}</span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )
-      })}
-    </div>
-  )
-}
-
 export function PanierTab() {
   const today = todayISO()
   const month = parseISODate(today).getMonth() + 1
@@ -259,12 +196,12 @@ export function PanierTab() {
             {showAll ? 'Seulement la saison' : 'Voir tous les produits'}
           </button>
           {data.basket.length > 0 && (
-            <button className="text-sm underline text-muted min-h-[44px]" onClick={() => clearBasket()}>
+            <button className="text-sm underline text-muted min-h-[44px]" onClick={() => clearBasket(today)}>
               Vider le panier
             </button>
           )}
         </div>
-        <p className="text-xs text-muted">« · » = se garde peu, à cuisiner en premier. Le menu de la semaine utilise ton panier en priorité (onglet Menu › Recalculer).</p>
+        <p className="text-xs text-muted">« · » = se garde peu, à cuisiner en premier. Le menu de la semaine se met à jour tout seul avec ton panier.</p>
       </section>
       {ideas.length > 0 && (
         <section className="card">

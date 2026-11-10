@@ -19,8 +19,19 @@ export const getBasket = async (database: CoachDB = db) => (await getSetting<Bas
 export async function toggleBasket(produce: string, today: ISODate, database: CoachDB = db) {
   const b = await getBasket(database)
   await setSetting(BASKET_KEY, b.some((x) => x.produce === produce) ? b.filter((x) => x.produce !== produce) : [...b, { produce, addedAt: today }], database)
+  await refreshMenus(today, database)
 }
-export const clearBasket = (database: CoachDB = db) => setSetting(BASKET_KEY, [], database)
+export async function clearBasket(today: ISODate, database: CoachDB = db) {
+  await setSetting(BASKET_KEY, [], database)
+  await refreshMenus(today, database)
+}
+
+/** Le panier a changé : les menus déjà proposés (cette semaine et la suivante) se recalculent, mes choix sont gardés. */
+async function refreshMenus(today: ISODate, database: CoachDB) {
+  for (const monday of [mondayOf(today), addDays(mondayOf(today), 7)]) {
+    if (await getMenu(monday, database)) await buildMenu(monday, database)
+  }
+}
 
 export const getMenu = (monday: ISODate, database: CoachDB = db) => getSetting<StoredMenu>(menuKey(monday), database)
 

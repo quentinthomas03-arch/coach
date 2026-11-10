@@ -1,11 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FoodItem } from '../../data/types'
 import { db } from '../../data/db'
-import { addFood, allFoods, createCustomFood, toggleFavorite, type Meal } from '../../app/nutrition'
+import { addFood, allFoods, createCustomFood, toggleFavorite, type Meal, MEALS } from '../../app/nutrition'
 import { forGrams, searchFoods } from '../../domain/foodSearch'
+import { findFood, parseMeal } from '../../domain/mealParse'
+import { normalPortion, portionGrams, type PortionSize } from '../../domain/portions'
 import { isValidEan } from '../../integrations/ean'
 import { OffError, productByBarcode, searchProducts } from '../../integrations/openfoodfacts'
 import { useDbQuery } from '../useDbQuery'
+
+interface Item {
+  key: string
+  food: FoodItem
+  size: PortionSize
+  /** Poids exact si je le connais (remplace la portion). */
+  grams?: number
+  alternatives: FoodItem[]
+  input?: string
+}
+
+const gramsOf = (i: Item) => i.grams ?? portionGrams(i.food, i.size)
+let seq = 0
+const mk = (food: FoodItem, alternatives: FoodItem[] = [], input?: string): Item => ({ key: `i${seq++}`, food, size: 'normale', alternatives, input })
 
 function Scanner({ onCode, onCancel }: { onCode: (c: string) => void; onCancel: () => void }) {
   const video = useRef<HTMLVideoElement>(null)
@@ -33,7 +49,7 @@ function Scanner({ onCode, onCancel }: { onCode: (c: string) => void; onCancel: 
         }
         loop()
       } catch {
-        setErr('Caméra indisponible (autorisation refusée ?). Tape les chiffres du code-barres à la place.')
+        setErr('Caméra indisponible (autorisation refusée ?). Tape les chiffres du code-barres dans la recherche.')
       }
     })()
     return () => {
@@ -45,46 +61,9 @@ function Scanner({ onCode, onCancel }: { onCode: (c: string) => void; onCancel: 
   return (
     <div className="space-y-3">
       {err ? <p className="text-danger">{err}</p> : <video ref={video} playsInline muted className="w-full rounded-card bg-black aspect-[4/3] object-cover" aria-label="Aperçu caméra" />}
-      <p className="text-sm text-muted">Centre le code-barres, bien éclairé et à plat.</p>
       <button className="btn-secondary w-full" onClick={onCancel}>
         Annuler
       </button>
-    </div>
-  )
-}
-
-function Grams({ food, onAdd, onBack }: { food: FoodItem; onAdd: (g: number) => void; onBack: () => void }) {
-  const [g, setG] = useState(food.portionG ?? 100)
-  const v = forGrams(food, g)
-  const chips = [...new Set([food.portionG, 50, 100, 150, 200, 250].filter((x): x is number => !!x))]
-  return (
-    <div className="space-y-3">
-      <p className="font-semibold">{food.name}</p>
-      <p className="text-sm text-muted">
-        Pour 100 g : {food.kcal} kcal · P {food.protein} · G {food.carbs} · L {food.fat}
-      </p>
-      <div className="grid grid-cols-3 gap-2">
-        {chips.map((c) => (
-          <button key={c} className={`min-h-[48px] rounded-btn border num ${g === c ? 'bg-accent text-on-accent border-transparent font-semibold' : 'bg-surface2 border-line'}`} onClick={() => setG(c)}>
-            {c} g{c === food.portionG ? ' ★' : ''}
-          </button>
-        ))}
-      </div>
-      <label className="label" htmlFor="grams">
-        Ou quantité exacte (g)
-      </label>
-      <input id="grams" className="field" inputMode="numeric" value={g} onChange={(e) => setG(Number(e.target.value.replace(/\D/g, '')) || 0)} />
-      <p className="num font-semibold">
-        {v.kcal} kcal · P {v.protein} g · G {v.carbs} g · L {v.fat} g
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        <button className="btn-secondary" onClick={onBack}>
-          Retour
-        </button>
-        <button className="btn-primary" disabled={!g} onClick={() => onAdd(g)}>
-          Ajouter
-        </button>
-      </div>
     </div>
   )
 }
@@ -106,11 +85,7 @@ function CustomFood({ onCreated, onBack, initialName = '' }: { onCreated: (f: Fo
         <button className="btn-secondary" onClick={onBack}>
           Retour
         </button>
-        <button
-          className="btn-primary"
-          disabled={!ok}
-          onClick={async () => onCreated(await createCustomFood({ name: f.name.trim(), kcal: n(f.kcal), protein: n(f.protein) || 0, carbs: n(f.carbs) || 0, fat: n(f.fat) || 0 }))}
-        >
+        <button className="btn-primary" disabled={!ok} onClick={async () => onCreated(await createCustomFood({ name: f.name.trim(), kcal: n(f.kcal), protein: n(f.protein) || 0, carbs: n(f.carbs) || 0, fat: n(f.fat) || 0 }))}>
           Créer
         </button>
       </div>
@@ -118,137 +93,259 @@ function CustomFood({ onCreated, onBack, initialName = '' }: { onCreated: (f: Fo
   )
 }
 
-/** Ajout d'un aliment : recherche, favoris, récents, scan, saisie du code, aliment perso. */
-export function AddFood({ date, meal, onClose }: { date: string; meal: Meal; onClose: () => void }) {
+function ItemRow({ it, onChange, onRemove, onSwap }: { it: Item; onChange: (i: Item) => void; onRemove: () => void; onSwap: () => void }) {
+  const [exact, setExact] = useState(it.grams != null)
+  const p = normalPortion(it.food)
+  const g = gramsOf(it)
+  const v = forGrams(it.food, g)
+  return (
+    <li className="border-t border-line py-2.5">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          {it.input && <p className="text-xs text-muted">« {it.input} »</p>}
+          <p className="font-semibold leading-snug">{it.food.name}</p>
+          <p className="text-xs text-muted num">
+            {g} g · {v.kcal} kcal · P {Math.round(v.protein)} g
+          </p>
+        </div>
+        <button className="text-sm underline text-muted min-h-[44px] px-1" onClick={onSwap}>
+          Changer
+        </button>
+        <button className="w-10 h-11 text-muted" aria-label={`Retirer ${it.food.name}`} onClick={onRemove}>
+          ✕
+        </button>
+      </div>
+      {!exact ? (
+        <div className="grid grid-cols-4 gap-1.5 mt-2" role="group" aria-label="Taille de la portion">
+          {(['petite', 'normale', 'grosse'] as const).map((s) => (
+            <button key={s} aria-pressed={it.size === s} onClick={() => onChange({ ...it, size: s, grams: undefined })} className={`min-h-[40px] rounded-btn border text-sm ${it.size === s ? 'bg-accent text-on-accent border-transparent font-semibold' : 'bg-surface2 border-line'}`}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+          <button className="min-h-[40px] rounded-btn border border-line bg-surface2 text-xs" onClick={() => { setExact(true); onChange({ ...it, grams: g }) }}>
+            Poids exact
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 mt-2">
+          <input className="field w-28" inputMode="numeric" aria-label="Poids en grammes" value={it.grams ?? ''} onChange={(e) => onChange({ ...it, grams: Number(e.target.value.replace(/\D/g, '')) || 0 })} />
+          <span className="text-sm">g</span>
+          <button className="text-sm underline text-muted min-h-[40px]" onClick={() => { setExact(false); onChange({ ...it, grams: undefined }) }}>
+            Revenir aux portions
+          </button>
+        </div>
+      )}
+      {!exact && <p className="text-xs text-muted mt-1">Portion normale : {p.label} (≈ {p.g} g)</p>}
+    </li>
+  )
+}
+
+/** Ajout d'un repas : décrire, chercher, favoris, scanner ; portions sans pesée. */
+export function AddFood({ date, meal: initialMeal, onClose }: { date: string; meal: Meal; onClose: () => void }) {
+  const [meal, setMeal] = useState<Meal>(initialMeal)
+  const [desc, setDesc] = useState('')
   const [q, setQ] = useState('')
-  const [mode, setMode] = useState<'search' | 'scan' | 'grams' | 'custom'>('search')
-  const [picked, setPicked] = useState<FoodItem>()
+  const [items, setItems] = useState<Item[]>([])
+  const [mode, setMode] = useState<'main' | 'scan' | 'custom'>('main')
+  const [swapKey, setSwapKey] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
   const [offResults, setOffResults] = useState<FoodItem[]>([])
+  const [busy, setBusy] = useState(false)
   const foods = useDbQuery(() => allFoods(), [])
   const mine = useDbQuery(() => db.foods.toArray(), [])
-  const results = useMemo(() => (foods && q.trim().length >= 2 ? searchFoods(q, foods) : []), [foods, q])
+  const results = useMemo(() => (foods && q.trim().length >= 2 ? searchFoods(q, foods, 25) : []), [foods, q])
   const favs = (mine ?? []).filter((f) => f.favorite)
-  const recents = (mine ?? []).filter((f) => f.lastUsedAt).sort((a, b) => ((a.lastUsedAt ?? '') < (b.lastUsedAt ?? '') ? 1 : -1)).slice(0, 12)
+  const recents = (mine ?? []).filter((f) => f.lastUsedAt && !f.favorite).sort((a, b) => ((a.lastUsedAt ?? '') < (b.lastUsedAt ?? '') ? 1 : -1)).slice(0, 10)
   const digits = q.replace(/\s/g, '')
+  const total = items.reduce((a, i) => a + forGrams(i.food, gramsOf(i)).kcal, 0)
+  const withMine = (f: FoodItem) => (mine ?? []).find((m) => m.id === f.id) ?? f
 
-  const pick = (f: FoodItem) => {
-    setPicked((mine ?? []).find((m) => m.id === f.id) ?? f)
-    setMode('grams')
+  const add = (f: FoodItem, alts: FoodItem[] = []) => {
+    if (swapKey) {
+      setItems(items.map((i) => (i.key === swapKey ? { ...i, food: withMine(f), grams: undefined } : i)))
+      setSwapKey(null)
+    } else setItems([...items, mk(withMine(f), alts)])
+    setQ('')
+    setOffResults([])
   }
   const lookup = async (code: string) => {
+    setMode('main')
     setMsg('Recherche du produit…')
     try {
-      const known = (mine ?? []).find((f) => f.barcode === code)
-      const p = known ?? (await productByBarcode(code))
+      const p = (mine ?? []).find((f) => f.barcode === code) ?? (await productByBarcode(code))
       if (p) {
         setMsg('')
-        pick(p)
+        add(p)
       } else {
         setMsg(`Produit ${code} absent d’Open Food Facts : crée-le avec les valeurs de l’étiquette.`)
         setMode('custom')
       }
     } catch (e) {
       setMsg(e instanceof OffError ? e.message : 'Erreur de recherche.')
-      setMode('search')
     }
   }
+  const swapping = items.find((i) => i.key === swapKey)
 
-  const Row = ({ f }: { f: FoodItem }) => (
+  const FoodRow = ({ f, sub }: { f: FoodItem; sub?: string }) => (
     <li className="flex items-center gap-2 border-t border-line">
-      <button className="flex-1 text-left py-2.5 min-h-[48px]" onClick={() => pick(f)}>
-        <span className="block">{f.name}</span>
+      <button className="flex-1 text-left py-2.5 min-h-[48px]" onClick={() => add(f)}>
+        <span className="block leading-snug">{f.name}</span>
         <span className="block text-xs text-muted">
-          {f.kcal} kcal/100 g{f.group ? ` · ${f.group}` : ''}
-          {f.source === 'off' ? ' · produit' : f.source === 'perso' ? ' · perso' : ''}
+          {sub ?? `${normalPortion(withMine(f)).label} · ${Math.round((f.kcal * normalPortion(withMine(f)).g) / 100)} kcal`}
+          {f.source === 'off' ? ' · produit' : f.group === 'Plat courant (estimé)' ? ' · estimé' : ''}
         </span>
       </button>
-      <button aria-label={f.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'} className="w-11 h-11 text-xl" onClick={() => toggleFavorite(f)}>
-        {(mine ?? []).find((m) => m.id === f.id)?.favorite ? '★' : '☆'}
+      <button aria-label={withMine(f).favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'} className="w-11 h-11 text-xl" onClick={() => toggleFavorite(f)}>
+        {withMine(f).favorite ? '★' : '☆'}
       </button>
     </li>
   )
 
   return (
-    <div className="fixed inset-0 z-30 bg-bg overflow-y-auto px-4 pt-[max(env(safe-area-inset-top),16px)] pb-[max(env(safe-area-inset-bottom),16px)]" role="dialog" aria-label="Ajouter un aliment">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="display text-xl">Ajouter un aliment</h2>
-        <button className="min-h-[44px] px-2 text-muted" onClick={onClose}>
-          Fermer
+    <div className="fixed inset-0 z-30 bg-bg overflow-y-auto px-4 pt-[max(env(safe-area-inset-top),16px)] pb-32" role="dialog" aria-label="Ajouter un repas">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="display text-xl">{swapping ? 'Remplacer' : 'Ajouter'}</h2>
+        <button className="min-h-[44px] px-2 text-muted" onClick={swapping ? () => setSwapKey(null) : onClose}>
+          {swapping ? 'Retour' : 'Fermer'}
         </button>
       </div>
+      {!swapping && (
+        <div className="grid grid-cols-4 gap-1 mb-3" role="group" aria-label="Repas">
+          {MEALS.map((m) => (
+            <button key={m.id} aria-pressed={meal === m.id} onClick={() => setMeal(m.id)} className={`min-h-[40px] rounded-btn border text-xs ${meal === m.id ? 'bg-accent text-on-accent border-transparent font-semibold' : 'bg-surface2 border-line'}`}>
+              {m.label.replace('Petit-déjeuner', 'Petit-déj')}
+            </button>
+          ))}
+        </div>
+      )}
       {msg && <p className="text-sm mb-2" role="status">{msg}</p>}
-      {mode === 'scan' && <Scanner onCode={(c) => lookup(c)} onCancel={() => setMode('search')} />}
-      {mode === 'grams' && picked && (
-        <Grams
-          food={picked}
-          onBack={() => setMode('search')}
-          onAdd={async (g) => {
-            await addFood(date, meal, picked, g)
-            onClose()
-          }}
-        />
-      )}
-      {mode === 'custom' && (
-        <CustomFood
-          initialName={q && !isValidEan(digits) ? q : ''}
-          onBack={() => setMode('search')}
-          onCreated={(f) => pick(f)}
-        />
-      )}
-      {mode === 'search' && (
-        <div className="space-y-3">
-          <input autoFocus className="field" placeholder="Rechercher (ex. riz cuit, yaourt) ou code-barres" aria-label="Rechercher un aliment" value={q} onChange={(e) => setQ(e.target.value)} />
-          <div className="grid grid-cols-2 gap-2">
-            <button className="btn-primary" onClick={() => setMode('scan')}>
-              Scanner
-            </button>
-            <button className="btn-secondary" onClick={() => setMode('custom')}>
-              Créer un aliment
-            </button>
-          </div>
-          {isValidEan(digits) && (
-            <button className="btn-secondary w-full" onClick={() => lookup(digits)}>
-              Chercher le code {digits}
-            </button>
-          )}
-          {q.trim().length >= 2 ? (
-            <>
-              <ul>{results.map((f) => <Row key={f.id} f={f} />)}</ul>
-              {!results.length && <p className="text-sm text-muted">Rien dans la table Ciqual ni dans tes aliments.</p>}
+
+      {mode === 'scan' && <Scanner onCode={lookup} onCancel={() => setMode('main')} />}
+      {mode === 'custom' && <CustomFood initialName={q && !isValidEan(digits) ? q : ''} onBack={() => setMode('main')} onCreated={(f) => { setMode('main'); add(f) }} />}
+
+      {mode === 'main' && (
+        <div className="space-y-4">
+          {swapping ? (
+            <section>
+              <p className="text-sm text-muted mb-1">Au lieu de « {swapping.food.name} » :</p>
+              <ul>{swapping.alternatives.map((f) => <FoodRow key={f.id} f={f} />)}</ul>
+            </section>
+          ) : (
+            <section className="card space-y-2">
+              <label className="font-semibold block" htmlFor="desc">
+                Décris ton repas
+              </label>
+              <textarea id="desc" className="field py-2 min-h-[72px]" placeholder="ex. colin pané, écrasé de pommes de terre, fondue de poireaux" value={desc} onChange={(e) => setDesc(e.target.value)} />
               <button
-                className="btn-secondary w-full"
-                onClick={async () => {
-                  setMsg('Recherche dans Open Food Facts…')
-                  try {
-                    setOffResults(await searchProducts(q))
-                    setMsg('')
-                  } catch (e) {
-                    setMsg(e instanceof OffError ? e.message : 'Erreur de recherche.')
-                  }
+                className="btn-primary w-full"
+                disabled={!desc.trim() || !foods || busy}
+                onClick={() => {
+                  setBusy(true)
+                  const parsed = parseMeal(desc, foods!)
+                  const found = parsed.filter((p) => p.best)
+                  setItems([...items, ...found.map((p) => mk(withMine(p.best!), p.alternatives, p.input))])
+                  const missing = parsed.filter((p) => !p.best).map((p) => `« ${p.input} »`)
+                  setMsg(missing.length ? `Pas trouvé : ${missing.join(', ')}. Cherche-les ci-dessous ou crée-les.` : '')
+                  setDesc('')
+                  setBusy(false)
                 }}
               >
-                Chercher un produit de marque (Open Food Facts)
+                Trouver les aliments
               </button>
-              {offResults.length > 0 && <ul>{offResults.map((f) => <Row key={f.id} f={f} />)}</ul>}
-            </>
-          ) : (
+            </section>
+          )}
+
+          {items.length > 0 && !swapping && (
+            <section className="card">
+              <h3 className="font-semibold">Ton repas</h3>
+              <ul>
+                {items.map((it) => (
+                  <ItemRow
+                    key={it.key}
+                    it={it}
+                    onChange={(n) => setItems(items.map((x) => (x.key === n.key ? n : x)))}
+                    onRemove={() => setItems(items.filter((x) => x.key !== it.key))}
+                    onSwap={() => {
+                      if (!it.alternatives.length && foods) it.alternatives = findFood(it.input ?? it.food.name, foods).filter((f) => f.id !== it.food.id).slice(0, 6)
+                      setSwapKey(it.key)
+                    }}
+                  />
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="space-y-2">
+            <input className="field" placeholder={swapping ? 'Ou cherche un autre aliment' : 'Ou cherche un aliment (ou tape un code-barres)'} aria-label="Rechercher un aliment" value={q} onChange={(e) => setQ(e.target.value)} />
+            {!swapping && (
+              <div className="grid grid-cols-2 gap-2">
+                <button className="btn-secondary" onClick={() => setMode('scan')}>
+                  Scanner
+                </button>
+                <button className="btn-secondary" onClick={() => setMode('custom')}>
+                  Créer un aliment
+                </button>
+              </div>
+            )}
+            {isValidEan(digits) && (
+              <button className="btn-secondary w-full" onClick={() => lookup(digits)}>
+                Chercher le code {digits}
+              </button>
+            )}
+            {q.trim().length >= 2 && (
+              <>
+                <ul>{results.map((f) => <FoodRow key={f.id} f={f} />)}</ul>
+                {!results.length && <p className="text-sm text-muted">Rien trouvé dans la table Ciqual ni dans tes aliments.</p>}
+                <button
+                  className="btn-secondary w-full"
+                  onClick={async () => {
+                    setMsg('Recherche dans Open Food Facts…')
+                    try {
+                      setOffResults(await searchProducts(q))
+                      setMsg('')
+                    } catch (e) {
+                      setMsg(e instanceof OffError ? e.message : 'Erreur de recherche.')
+                    }
+                  }}
+                >
+                  Chercher un produit de marque (Open Food Facts)
+                </button>
+                {offResults.length > 0 && <ul>{offResults.map((f) => <FoodRow key={f.id} f={f} />)}</ul>}
+              </>
+            )}
+          </section>
+
+          {!swapping && q.trim().length < 2 && (
             <>
               {favs.length > 0 && (
                 <section>
                   <h3 className="font-semibold">Favoris</h3>
-                  <ul>{favs.map((f) => <Row key={f.id} f={f} />)}</ul>
+                  <ul>{favs.map((f) => <FoodRow key={f.id} f={f} />)}</ul>
                 </section>
               )}
               {recents.length > 0 && (
                 <section>
                   <h3 className="font-semibold">Récents</h3>
-                  <ul>{recents.map((f) => <Row key={f.id} f={f} />)}</ul>
+                  <ul>{recents.map((f) => <FoodRow key={f.id} f={f} />)}</ul>
                 </section>
               )}
-              <p className="text-xs text-muted">Aliments bruts : table Ciqual de l’Anses (2025). Produits : Open Food Facts.</p>
+              <p className="text-xs text-muted">Pas besoin de peser : « Normale » correspond à une portion habituelle d’adulte. Valeurs : table Ciqual de l’Anses, Open Food Facts pour les produits.</p>
             </>
           )}
+        </div>
+      )}
+
+      {items.length > 0 && !swapping && mode === 'main' && (
+        <div className="fixed bottom-0 inset-x-0 bg-surface/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)]">
+          <button
+            className="btn-primary w-full"
+            onClick={async () => {
+              for (const it of items) await addFood(date, meal, it.food, gramsOf(it), db, it.grams != null)
+              onClose()
+            }}
+          >
+            Ajouter au {MEALS.find((m) => m.id === meal)!.label.toLowerCase()} · {items.length} aliment{items.length > 1 ? 's' : ''} · {total} kcal
+          </button>
         </div>
       )}
     </div>

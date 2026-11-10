@@ -4,6 +4,7 @@ import { addDays } from '../domain/dates'
 import { forGrams } from '../domain/foodSearch'
 import { dayTargets, fuelingTips, hydrationTarget, waterOfDay, WATER_ESTIMATE_ML, type ActivityLevel, type DaySession, type DayTargets, type FuelingTips, type HydrationTarget, type WeightGoal } from '../domain/nutrition'
 import { RUN_TYPES } from '../domain/activities'
+import { dishFoods } from '../domain/dishes'
 import { currentPosition, fetchTodayMax } from '../integrations/weather'
 
 export type Meal = FoodLogEntry['meal']
@@ -44,8 +45,9 @@ export async function loadCiqual(): Promise<FoodItem[]> {
 export async function allFoods(database: CoachDB = db): Promise<FoodItem[]> {
   const mine = await database.foods.toArray()
   const ciq = await loadCiqual().catch(() => [])
+  const table = new Map(ciq.map((f) => [Number(f.id.replace('ciqual-', '')), { kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat }]))
   const mineIds = new Set(mine.map((f) => f.id))
-  return [...mine, ...ciq.filter((f) => !mineIds.has(f.id))]
+  return [...mine, ...[...dishFoods(table), ...ciq].filter((f) => !mineIds.has(f.id))]
 }
 
 /* ---------- Journal ---------- */

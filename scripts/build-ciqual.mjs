@@ -31,7 +31,10 @@ const out = foodList
     r1(num(f.nutrition?.fat)),
     r1(num(f.nutrition?.fiber)),
   ])
-  .filter((x) => x[1] && x[3] >= 0)
+  // Valeurs manquantes dans Ciqual (tout à 0) : on retire l'aliment, sauf eaux, boissons sans sucre, sel, épices, herbes.
+  // Énergie manquante mais macronutriments présents : on la recalcule (4 kcal/g protéines et glucides, 9 kcal/g lipides).
+  .map((x) => (x[3] === 0 && x[4] + x[5] + x[6] > 0 ? [...x.slice(0, 3), Math.round(4 * x[4] + 4 * x[5] + 9 * x[6]), ...x.slice(4)] : x))
+  .filter((x) => x[1] && (x[3] > 0 || x[4] + x[5] + x[6] > 0 || /^(Eaux|Boissons sans alcool|Sels|Épices|Herbes)/.test(x[2])))
   .sort((a, b) => a[1].localeCompare(b[1], 'fr'))
 
 writeFileSync('public/data/ciqual.json', JSON.stringify({ source: 'Anses, Table Ciqual 2025, Licence Ouverte', count: out.length, foods: out }))

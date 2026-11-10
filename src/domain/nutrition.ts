@@ -188,3 +188,24 @@ export function fuelingTips(minutes: number, hard: boolean, kind: 'course' | 're
   ]
   return { avant, pendant, apres }
 }
+
+/* ---------- Eau : estimation simple ---------- */
+
+/** Réponse du check du matin → quantité estimée (milieu de la fourchette). */
+export const WATER_ESTIMATE_ML: Record<'moins-1' | '1-1.5' | '1.5-2' | 'plus-2', number> = {
+  'moins-1': 750,
+  '1-1.5': 1250,
+  '1.5-2': 1750,
+  'plus-2': 2250,
+}
+
+/**
+ * Eau bue un jour donné : ce que j'ai saisi (verres, gourdes), sinon l'estimation du check du matin,
+ * sinon ce que la montre a enregistré. On ne cumule pas les sources (pas de double comptage).
+ */
+export function waterOfDay(manualMl: number, checkMl: number | undefined, watchMl: number | undefined): { ml: number; source: 'manuel' | 'check' | 'montre' | 'aucune' } {
+  if (manualMl > 0) return { ml: manualMl, source: 'manuel' }
+  if (checkMl != null) return { ml: checkMl, source: 'check' }
+  if (watchMl != null && watchMl > 0) return { ml: watchMl, source: 'montre' }
+  return { ml: 0, source: 'aucune' }
+}

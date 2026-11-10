@@ -18,8 +18,10 @@ describe('lecture Intervals.icu', () => {
   })
   it('bien-être', () => {
     expect(mapWellness({ id: '2026-11-17', sleepSecs: 25200, restingHR: 52, hrv: null })).toEqual({
-      date: '2026-11-17', sleepHours: 7, sleepScore: undefined, restingHr: 52, hrv: undefined, weightKg: undefined, bodyBattery: undefined,
+      date: '2026-11-17', sleepHours: 7, sleepScore: undefined, restingHr: 52, hrv: undefined, weightKg: undefined, bodyBattery: undefined, hydrationMl: undefined,
     })
+    expect(mapWellness({ id: '2026-11-17', hydrationVolume: 1.8 })!.hydrationMl).toBe(1800)
+    expect(mapWellness({ id: '2026-11-17', hydrationVolume: 1500 })!.hydrationMl).toBe(1500)
     expect(mapWellness({ id: 'x' })).toBeUndefined()
   })
 })

@@ -79,6 +79,7 @@ export function NutritionSettings() {
         </label>
         <input id="dislikes" className="field" value={dislikes} onChange={(e) => setDislikes(e.target.value)} placeholder="ex. saumon, mangue" />
       </div>
+      <Stepper label="Ma gourde" value={cfg.bottleMl / 10} onChange={(v) => setCfg({ ...cfg, bottleMl: v * 10 })} min={25} max={150} step={5} unit="cl" />
       <Toggle label="Ajuster l’eau à la météo" hint="Utilise ta position (arrondie) et Open-Meteo, une fois par jour." checked={cfg.weather} onChange={(v) => setCfg({ ...cfg, weather: v })} />
       <button
         className="btn-primary w-full"

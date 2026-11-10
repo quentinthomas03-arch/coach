@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bmr, checkWeightGoal, dayTargets, fuelingTips, hydrationTarget, sessionKcal, type NutritionProfile } from './nutrition'
+import { waterOfDay, bmr, checkWeightGoal, dayTargets, fuelingTips, hydrationTarget, sessionKcal, type NutritionProfile } from './nutrition'
 
 const me: NutritionProfile = { sex: 'homme', age: 34, heightCm: 175, weightKg: 75, activity: 'sedentaire', goal: 'maintien' }
 
@@ -59,5 +59,14 @@ describe('hydratation et repères', () => {
     expect(t.pendant[0]).toMatch(/30 à 60 g de glucides/)
     expect(t.avant.join(' ')).not.toMatch(/banane/)
     expect(fuelingTips(30, false, 'course').pendant[0]).toMatch(/Pas besoin de manger/)
+  })
+})
+
+describe('eau du jour', () => {
+  it('saisie > check du matin > montre, sans cumul', () => {
+    expect(waterOfDay(500, 1750, 2000)).toEqual({ ml: 500, source: 'manuel' })
+    expect(waterOfDay(0, 1750, 2000)).toEqual({ ml: 1750, source: 'check' })
+    expect(waterOfDay(0, undefined, 2000)).toEqual({ ml: 2000, source: 'montre' })
+    expect(waterOfDay(0, undefined, undefined).source).toBe('aucune')
   })
 })

@@ -33,6 +33,8 @@ export interface CoachContext {
   tabac?: TabacStatus
   /** Alertes des garde-fous de charge (voir load.ts). */
   loadAlerts?: { rule: 'acwr' | 'volume'; text: string }[]
+  /** Eau de la veille (si connue) et objectif. */
+  waterYesterday?: { ml: number; target: number }
 }
 
 type Variants = Record<Tone, string>
@@ -114,6 +116,19 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
         bienveillant: 'Ton check du matin m’aide à adapter tes séances. 15 secondes quand tu peux !',
         direct: 'Pas de check du matin depuis quelques jours : sans lui, j’adapte à l’aveugle.',
         cash: 'Trois jours sans check. Je ne suis pas devin : 15 secondes, 4 boutons.',
+      }, tone),
+    )
+  }
+
+  // 5 bis. Eau de la veille.
+  const wy = ctx.waterYesterday
+  if (wy && wy.ml > 0 && wy.ml < wy.target * 0.6) {
+    const l = (wy.ml / 1000).toFixed(1).replace('.', ',')
+    out.push(
+      say('eau', 'info', {
+        bienveillant: `Hier, environ ${l} L d’eau : un peu juste. Garde une gourde à portée de main aujourd’hui.`,
+        direct: `Seulement ~${l} L hier. Une gourde sur le bureau, et tu la finis avant midi.`,
+        cash: `${l} L hier. Pas assez. Gourde, maintenant.`,
       }, tone),
     )
   }

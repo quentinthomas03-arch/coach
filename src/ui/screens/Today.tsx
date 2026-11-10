@@ -6,6 +6,8 @@ import { db } from '../../data/db'
 import { dismissProposal, loadToday, type TodayView } from '../../app/daily'
 import { applyProposal, markDone, markMissed } from '../../app/plan'
 import { saveActivityRpe } from '../../app/importer'
+import { setWaterEstimate } from '../../app/nutrition'
+import { addDays } from '../../domain/dates'
 import { getGoal, resultsAwaited, saveTestResult, TEST_TITLE } from '../../app/goals'
 import { parseTime, DISTANCES } from '../../domain/paces'
 import { useDbQuery as useResults } from '../useDbQuery'
@@ -54,6 +56,7 @@ function CheckinCard({ today, initial, tabacPrep }: { today: string; initial?: M
   const ready = c.physique && c.moral && c.travail && c.viePerso && (!pain || (c.douleur?.zone && c.douleur.intensite))
   const save = async () => {
     await db.checkins.put({ ...(c as MorningCheckin), douleur: pain ? c.douleur : undefined, date: today, at: new Date().toISOString() })
+    await setWaterEstimate(addDays(today, -1), c.eauHier)
     setOpen(false)
   }
   if (!open)
@@ -78,6 +81,18 @@ function CheckinCard({ today, initial, tabacPrep }: { today: string; initial?: M
           { value: 'aucun', label: 'Pas d’alcool' },
           { value: '1-2', label: '1-2 verres' },
           { value: '3+', label: '3 et +' },
+        ]}
+      />
+      <Choice
+        label="Hier, tu as bu (eau, tisane…)"
+        cols={4}
+        value={c.eauHier}
+        onChange={(v) => setC({ ...c, eauHier: v })}
+        options={[
+          { value: 'moins-1', label: '< 1 L' },
+          { value: '1-1.5', label: '1-1,5 L' },
+          { value: '1.5-2', label: '1,5-2 L' },
+          { value: 'plus-2', label: '> 2 L' },
         ]}
       />
       {tabacPrep && (
@@ -281,7 +296,8 @@ function NutritionCard({ today }: { today: string }) {
       </Link>
       <Gauge label="Protéines" value={d.eaten.protein} target={d.targets.protein} unit="g" />
       <Gauge label="Eau" value={Math.round(d.waterMl / 10) / 100} target={Math.round(d.hydration.ml / 10) / 100} unit="L" />
-      <WaterButtons date={today} />
+      <WaterButtons date={today} bottleMl={d.bottleMl} />
+      {d.waterSource === 'montre' && <p className="text-xs text-muted">Eau enregistrée sur ta montre.</p>}
       {d.tips && <p className="text-sm text-muted">{d.tips.avant[0]}</p>}
     </section>
   )

@@ -2,7 +2,7 @@ import type { FoodItem, FoodLogEntry, ISODate } from '../data/types'
 import { db, getSetting, setSetting, type CoachDB } from '../data/db'
 import { addDays } from '../domain/dates'
 import { forGrams } from '../domain/foodSearch'
-import { dayTargets, fuelingTips, hydrationTarget, type ActivityLevel, type DaySession, type DayTargets, type FuelingTips, type HydrationTarget, type WeightGoal } from '../domain/nutrition'
+import { dayTargets, fuelingTips, hydrationTarget, waterOfDay, WATER_ESTIMATE_ML, type ActivityLevel, type DaySession, type DayTargets, type FuelingTips, type HydrationTarget, type WeightGoal } from '../domain/nutrition'
 import { RUN_TYPES } from '../domain/activities'
 import { currentPosition, fetchTodayMax } from '../integrations/weather'
 
@@ -22,9 +22,11 @@ export interface NutritionConfig {
   targetDate?: ISODate
   /** Utiliser la météo (position) pour l'hydratation. */
   weather: boolean
+  /** Contenance de ma gourde (ml) : 1 tap = 1 gourde. */
+  bottleMl: number
 }
 export const NUTRITION_KEY = 'nutrition.config'
-export const DEFAULT_NUTRITION: NutritionConfig = { activity: 'sedentaire', goal: 'maintien', weather: true }
+export const DEFAULT_NUTRITION: NutritionConfig = { activity: 'sedentaire', goal: 'maintien', weather: true, bottleMl: 500 }
 export const getNutritionConfig = async (database: CoachDB = db) => ({ ...DEFAULT_NUTRITION, ...((await getSetting<NutritionConfig>(NUTRITION_KEY, database)) ?? {}) })
 
 /* ---------- Base Ciqual (chargée à la demande, gardée en mémoire) ---------- */
@@ -115,11 +117,18 @@ export function totals(entries: FoodLogEntry[]) {
 /* ---------- Hydratation ---------- */
 
 export async function addWater(date: ISODate, ml: number, database: CoachDB = db) {
-  await database.hydration.add({ date, ml, at: new Date().toISOString() })
+  await database.hydration.add({ date, ml, at: new Date().toISOString(), source: 'manuel' })
 }
 export async function undoLastWater(date: ISODate, database: CoachDB = db) {
-  const last = await database.hydration.where('date').equals(date).last()
+  const last = await database.hydration.where('date').equals(date).filter((h) => h.source !== 'check').last()
   if (last?.id != null) await database.hydration.delete(last.id)
+}
+
+/** Estimation de la veille, depuis le check du matin (remplace une estimation précédente). */
+export async function setWaterEstimate(date: ISODate, estimate: keyof typeof WATER_ESTIMATE_ML | undefined, database: CoachDB = db) {
+  const prev = await database.hydration.where('date').equals(date).filter((h) => h.source === 'check').primaryKeys()
+  await database.hydration.bulkDelete(prev)
+  if (estimate) await database.hydration.add({ date, ml: WATER_ESTIMATE_ML[estimate], at: new Date().toISOString(), source: 'check' })
 }
 
 const METEO_KEY = 'meteo.today'
@@ -146,6 +155,9 @@ export interface NutritionDay {
   targets?: DayTargets
   hydration: HydrationTarget
   waterMl: number
+  /** D'où vient le chiffre de l'eau. */
+  waterSource: 'manuel' | 'check' | 'montre' | 'aucune'
+  bottleMl: number
   entries: FoodLogEntry[]
   eaten: ReturnType<typeof totals>
   tips?: FuelingTips
@@ -154,7 +166,7 @@ export interface NutritionDay {
 }
 
 export async function nutritionDay(date: ISODate, tmaxC?: number, database: CoachDB = db): Promise<NutritionDay> {
-  const [profile, cfg, sessions, acts, entries, water, metrics] = await Promise.all([
+  const [profile, cfg, sessions, acts, entries, water, metrics, wellness] = await Promise.all([
     database.profile.get('me'),
     getNutritionConfig(database),
     database.sessions.where('date').equals(date).filter((s) => s.status !== 'skipped' && s.status !== 'missed' && s.kind !== 'repos').toArray(),
@@ -162,7 +174,11 @@ export async function nutritionDay(date: ISODate, tmaxC?: number, database: Coac
     database.foodLog.where('date').equals(date).toArray(),
     database.hydration.where('date').equals(date).toArray(),
     database.bodyMetrics.orderBy('date').reverse().filter((m) => m.weightKg != null).first(),
+    database.wellness.get(date),
   ])
+  const manual = water.filter((w) => w.source !== 'check').reduce((a, w) => a + w.ml, 0)
+  const check = water.find((w) => w.source === 'check')?.ml
+  const w = waterOfDay(manual, check, wellness?.hydrationMl)
   // Séances : l'activité réelle si elle existe, sinon la séance prévue.
   const day: DaySession[] = []
   for (const s of sessions) {
@@ -183,7 +199,9 @@ export async function nutritionDay(date: ISODate, tmaxC?: number, database: Coac
   return {
     targets,
     hydration: hydrationTarget(weightKg ?? 70, runMin, tmaxC),
-    waterMl: water.reduce((a, w) => a + w.ml, 0),
+    waterMl: w.ml,
+    waterSource: w.source,
+    bottleMl: cfg.bottleMl,
     entries,
     eaten: totals(entries),
     tips: main ? fuelingTips(main.minutes, (main.rpe ?? 0) >= 7, main.kind === 'renfo' ? 'renfo' : 'course', profile?.foodDislikes ?? []) : undefined,

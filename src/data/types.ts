@@ -131,9 +131,13 @@ export interface MorningCheckin {
   alcool?: 'aucun' | '1-2' | '3+'
   /** Cigarettes fumées la veille (module tabac, facultatif). */
   cigarettes?: number
+  /** Eau bue la veille (estimation en 1 tap). */
+  eauHier?: WaterEstimate
   note?: string
   at: ISODateTime
 }
+
+export type WaterEstimate = 'moins-1' | '1-1.5' | '1.5-2' | 'plus-2'
 
 export interface SessionFeedback {
   id: string
@@ -155,6 +159,8 @@ export interface Wellness {
   hrv?: number
   bodyBattery?: number
   weightKg?: number
+  /** Eau enregistrée sur la montre / Garmin Connect (ml), si transmise par Intervals.icu. */
+  hydrationMl?: number
   raw?: unknown
 }
 
@@ -196,6 +202,8 @@ export interface HydrationEntry {
   date: ISODate
   ml: number
   at: ISODateTime
+  /** manuel (verre, gourde) ou estimation du check du matin. */
+  source?: 'manuel' | 'check'
 }
 
 export interface BodyMetric {

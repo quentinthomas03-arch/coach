@@ -33,6 +33,12 @@ export function mapActivity(raw: Record<string, unknown>): Activity | undefined 
   }
 }
 
+/** Intervals.icu peut donner l'eau en litres ou en ml selon la source : on normalise en ml. */
+function hydrationMl(v?: number): number | undefined {
+  if (v == null || v <= 0) return undefined
+  return Math.round(v < 20 ? v * 1000 : v)
+}
+
 export function mapWellness(raw: Record<string, unknown>): Wellness | undefined {
   const date = str(raw.id)
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined
@@ -45,6 +51,7 @@ export function mapWellness(raw: Record<string, unknown>): Wellness | undefined 
     hrv: num(raw.hrv),
     weightKg: num(raw.weight),
     bodyBattery: num(raw.bodyBattery),
+    hydrationMl: hydrationMl(num(raw.hydrationVolume)),
   }
 }
 

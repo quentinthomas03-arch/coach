@@ -71,6 +71,10 @@ describe('voix du coach', () => {
     const m = coachMessages(ctx({ loadAlerts: [{ rule: 'volume', text: 'Volume +30 %.' }] }))
     expect(m[0]).toMatchObject({ rule: 'charge-volume', kind: 'alerte', text: 'Stop, tu montes trop vite. Volume +30 %.' })
   })
+  it('eau insuffisante la veille', () => {
+    expect(rules(ctx({ waterYesterday: { ml: 750, target: 2250 } }))).toContain('eau')
+    expect(rules(ctx({ waterYesterday: { ml: 1750, target: 2250 } }))).not.toContain('eau')
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

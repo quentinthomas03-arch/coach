@@ -9,6 +9,7 @@ import { getPlanConfig, getTabac, KEYS } from './config'
 import { applyWeeklyReviews, regenerate } from './plan'
 import { syncToWatch, type SyncResult } from './sync'
 import { activitiesAwaitingRpe, importFromIntervals } from './importer'
+import { nutritionDay } from './nutrition'
 import { buildLoadEntries, loadStatus, type LoadStatus } from '../domain/load'
 import type { Activity } from '../data/types'
 
@@ -73,7 +74,9 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     db.feedback.where('date').between(addDays(today, -35), today, true, true).toArray(),
   ])
   const load = loadStatus(buildLoadEntries(acts, allSessions, feedback), today)
-  const messages = cfg ? coachMessages({ today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts }) : []
+  const yWater = await nutritionDay(addDays(today, -1))
+  const waterYesterday = yWater.waterSource !== 'aucune' ? { ml: yWater.waterMl, target: yWater.hydration.ml } : undefined
+  const messages = cfg ? coachMessages({ today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday }) : []
   return {
     today,
     sessions,

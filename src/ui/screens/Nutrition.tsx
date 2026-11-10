@@ -11,13 +11,13 @@ import { CoursesTab, MenuTab, PanierTab } from './NutritionPlanning'
 const DAY_TYPE = { repos: 'Jour de repos', leger: 'Jour d’entraînement léger', soutenu: 'Jour d’entraînement soutenu' }
 const L = (ml: number) => `${(ml / 1000).toFixed(2).replace('.', ',')} L`
 
-export function WaterButtons({ date }: { date: string }) {
+export function WaterButtons({ date, bottleMl = 500 }: { date: string; bottleMl?: number }) {
   return (
     <div className="grid grid-cols-3 gap-2">
       <button className="btn-secondary px-2" onClick={() => addWater(date, 250)}>
         + Verre
       </button>
-      <button className="btn-secondary px-2" onClick={() => addWater(date, 500)}>
+      <button className="btn-secondary px-2" aria-label={`Ajouter ma gourde (${bottleMl / 10} cl)`} onClick={() => addWater(date, bottleMl)}>
         + Gourde
       </button>
       <button className="btn-secondary px-2 text-muted" aria-label="Annuler le dernier ajout d’eau" onClick={() => undoLastWater(date)}>
@@ -118,8 +118,10 @@ function Journal() {
           </span>
         </div>
         <Gauge label="Hydratation" value={Math.round(day.waterMl / 10) / 100} target={Math.round(day.hydration.ml / 10) / 100} unit="L" />
-        {date === today && <WaterButtons date={date} />}
-        <p className="text-xs text-muted">{day.hydration.reasons.join(' ')}</p>
+        {date === today && <WaterButtons date={date} bottleMl={day.bottleMl} />}
+        {day.waterSource === 'check' && <p className="text-xs text-muted">Estimation de ton check du matin.</p>}
+        {day.waterSource === 'montre' && <p className="text-xs text-muted">Eau enregistrée sur ta montre (Garmin).</p>}
+        <p className="text-xs text-muted">{day.hydration.reasons.join(' ')} Pas envie de tout noter ? Le check du matin demande juste combien tu as bu la veille.</p>
       </section>
 
       {day.tips && date === today && (

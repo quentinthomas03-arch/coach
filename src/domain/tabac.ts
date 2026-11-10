@@ -92,3 +92,35 @@ export function tabacStatus(s: TabacSettings, logs: CigaretteLog[], today: ISODa
 export function yearlyCost(s: Pick<TabacSettings, 'cigsPerDayBefore' | 'packPrice' | 'cigsPerPack'>): number {
   return Math.round((365 * s.cigsPerDayBefore * s.packPrice) / s.cigsPerPack)
 }
+
+/**
+ * Tabac × course : évolution de la FC de repos autour de l'arrêt.
+ * Référence = moyenne des 14 jours avant l'arrêt ; actuel = moyenne des 7 derniers jours.
+ * La baisse de la FC de repos après l'arrêt est un repère de récupération cardio (avec l'entraînement).
+ */
+export interface RhrPoint {
+  date: ISODate
+  restingHr?: number
+}
+
+export interface RhrTrend {
+  baseline?: number
+  current?: number
+  delta?: number
+  weekly: { weekStart: ISODate; avg: number }[]
+}
+
+export function rhrTrend(points: RhrPoint[], quitDate: ISODate, today: ISODate): RhrTrend {
+  const avg = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : undefined)
+  const val = (from: ISODate, to: ISODate) => points.filter((p) => p.date >= from && p.date < to && p.restingHr != null).map((p) => p.restingHr!)
+  const b = val(addDays(quitDate, -14), quitDate)
+  const baseline = b.length >= 4 ? avg(b) : undefined
+  const c = val(addDays(today, -6), addDays(today, 1))
+  const current = today >= quitDate && c.length >= 3 ? avg(c) : undefined
+  const weekly: RhrTrend['weekly'] = []
+  for (let ws = addDays(quitDate, -14); ws <= today; ws = addDays(ws, 7)) {
+    const v = val(ws, addDays(ws, 7))
+    if (v.length >= 3) weekly.push({ weekStart: ws, avg: avg(v)! })
+  }
+  return { baseline, current, delta: baseline != null && current != null ? Math.round((current - baseline) * 10) / 10 : undefined, weekly }
+}

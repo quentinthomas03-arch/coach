@@ -3,7 +3,8 @@ import { useDbQuery } from '../useDbQuery'
 import { db, setSetting } from '../../data/db'
 import { getTabac, KEYS } from '../../app/config'
 import { addDays, formatLongFr, todayISO } from '../../domain/dates'
-import { MILESTONES, TABAC_HELP, tabacStatus, yearlyCost, type TabacSettings } from '../../domain/tabac'
+import { MILESTONES, TABAC_HELP, rhrTrend, tabacStatus, yearlyCost, type TabacSettings } from '../../domain/tabac'
+import { LineChart } from '../components/Charts'
 import { Stepper } from '../components/Choice'
 import { PageTitle } from '../Layout'
 
@@ -69,10 +70,11 @@ export function Tabac() {
   const data = useDbQuery(async () => {
     const s = await getTabac()
     const logs = (await db.checkins.toArray()).filter((c) => c.cigarettes != null).map((c) => ({ date: addDays(c.date, -1), count: c.cigarettes! }))
-    return { s, status: s ? tabacStatus(s, logs, today) : undefined }
+    const well = s ? await db.wellness.where('date').between(addDays(s.quitDate, -14), today, true, true).toArray() : []
+    return { s, status: s ? tabacStatus(s, logs, today) : undefined, rhr: s ? rhrTrend(well, s.quitDate, today) : undefined }
   }, [today])
   if (!data) return null
-  const { s, status } = data
+  const { s, status, rhr } = data
 
   if (!s || edit)
     return (
@@ -136,6 +138,31 @@ export function Tabac() {
           SOS envie de fumer
         </button>
       )}
+
+      <section className="card space-y-2" aria-label="Ton cœur et la course">
+        <h2 className="display text-lg">Ton cœur et la course</h2>
+        {rhr?.baseline == null ? (
+          <p className="text-sm text-muted">
+            {status?.phase === 'preparation'
+              ? 'Porte ta montre la nuit : ta fréquence cardiaque de repos des 2 semaines avant l’arrêt servira de référence.'
+              : 'Pas assez de mesures de FC de repos autour de ta date d’arrêt (montre portée la nuit nécessaire).'}
+          </p>
+        ) : (
+          <>
+            <p>
+              FC de repos avant l’arrêt : <strong className="num">{Math.round(rhr.baseline)} bpm</strong>
+              {rhr.current != null && (
+                <>
+                  {' '}· maintenant : <strong className="num">{Math.round(rhr.current)} bpm</strong>{' '}
+                  {rhr.delta! < 0 ? <span className="text-ok font-semibold">({rhr.delta} bpm)</span> : <span className="text-muted">({rhr.delta! > 0 ? '+' : ''}{rhr.delta} bpm)</span>}
+                </>
+              )}
+            </p>
+            {rhr.weekly.length >= 2 && <LineChart title="FC de repos (moyenne par semaine)" unit="bpm" data={rhr.weekly.map((w) => ({ label: `${Number(w.weekStart.slice(8))}/${Number(w.weekStart.slice(5, 7))}`, value: w.avg }))} />}
+            <p className="text-xs text-muted">Une FC de repos qui baisse = un cœur qui travaille moins pour le même effort. L’arrêt du tabac et la course s’additionnent.</p>
+          </>
+        )}
+      </section>
 
       <section className="card">
         <h2 className="display text-lg mb-2">Ce que ton corps gagne</h2>

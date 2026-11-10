@@ -37,3 +37,22 @@ describe('tabac', () => {
     expect(yearlyCost(s)).toBe(2281)
   })
 })
+
+import { rhrTrend } from './tabac'
+import { addDays } from './dates'
+describe('tabac × FC de repos', () => {
+  it('référence avant l’arrêt, valeur actuelle, évolution', () => {
+    const pts = Array.from({ length: 60 }, (_, i) => {
+      const date = addDays('2026-12-18', i)
+      return { date, restingHr: date < '2027-01-01' ? 62 : 62 - Math.min(5, Math.floor(i / 7)) }
+    })
+    const t = rhrTrend(pts, '2027-01-01', '2027-02-10')
+    expect(t.baseline).toBe(62)
+    expect(t.current).toBeLessThan(62)
+    expect(t.delta).toBeLessThan(0)
+    expect(t.weekly.length).toBeGreaterThan(4)
+  })
+  it('pas assez de données', () => {
+    expect(rhrTrend([], '2027-01-01', '2027-01-10')).toEqual({ baseline: undefined, current: undefined, delta: undefined, weekly: [] })
+  })
+})

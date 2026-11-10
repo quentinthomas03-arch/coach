@@ -37,3 +37,16 @@ describe('VDOT', () => {
     expect(formatTime(1325)).toBe('22:05')
   })
 })
+
+import { parseTime } from './paces'
+describe('saisie des temps', () => {
+  it('formats courants', () => {
+    expect(parseTime('45:00')).toBe(2700)
+    expect(parseTime('1:45:00')).toBe(6300)
+    expect(parseTime('1h45')).toBe(6300)
+    expect(parseTime('3h34m10')).toBe(12850)
+    expect(parseTime("23'30")).toBe(1410)
+    expect(parseTime('50')).toBe(3000)
+    expect(parseTime('abc')).toBeUndefined()
+  })
+})

@@ -91,3 +91,17 @@ export function formatTime(sec: number): string {
 export const DISTANCES = { '5k': 5000, '10k': 10000, semi: 21097.5, marathon: 42195 } as const
 export type RoadDistance = keyof typeof DISTANCES
 export const DISTANCE_LABEL: Record<RoadDistance, string> = { '5k': '5 km', '10k': '10 km', semi: 'semi-marathon', marathon: 'marathon' }
+
+/** « 45:00 », « 1:45:00 », « 1h45 », « 1h45m30 », « 23'30 » → secondes (undefined si illisible). */
+export function parseTime(input: string): number | undefined {
+  const s = input.trim().toLowerCase().replace(/\s+/g, '').replace(/[’'′]/g, ':').replace(/"$/, '')
+  let m = /^(\d+)h(\d{1,2})?(?:m|:)?(\d{1,2})?s?$/.exec(s)
+  if (m) return Number(m[1]) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0)
+  m = /^(\d+):(\d{1,2}):(\d{1,2})$/.exec(s)
+  if (m) return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])
+  m = /^(\d+):(\d{1,2})$/.exec(s)
+  if (m) return Number(m[1]) * 60 + Number(m[2])
+  m = /^(\d+)(?:min|mn|m)?$/.exec(s)
+  if (m) return Number(m[1]) * 60
+  return undefined
+}

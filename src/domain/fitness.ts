@@ -31,6 +31,7 @@ export interface FitnessEstimate {
 }
 
 export const RECENT_DAYS = 56
+const fr = (d: ISODate) => new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(d + 'T12:00:00'))
 
 export function estimateFitness(perfs: Performance[], today: ISODate): FitnessEstimate {
   const valid = perfs.filter((p) => p.date <= today && p.distanceM > 0 && p.timeSec > 0)
@@ -47,7 +48,7 @@ export function estimateFitness(perfs: Performance[], today: ISODate): FitnessEs
       low: r1(best.vdot - 1),
       high: r1(best.vdot + 1),
       pastBest: pastBest != null ? r1(pastBest) : undefined,
-      basis: `Mesurée : ${best.label ?? 'performance'} du ${best.date}.`,
+      basis: `Mesurée : ${best.label ?? 'performance'} du ${fr(best.date)}.`,
     }
   }
   if (twoYears.length) {
@@ -60,7 +61,7 @@ export function estimateFitness(perfs: Performance[], today: ISODate): FitnessEs
       low: r1(est - 3),
       high: r1(Math.min(best.vdot, est + 2)),
       pastBest: r1(best.vdot),
-      basis: `Estimée à partir de ${best.label ?? 'ta meilleure performance'} (${best.date}), corrigée de ${weeks} semaines sans performance récente. Un test affinera.`,
+      basis: `Estimée à partir de ${best.label ?? 'ta meilleure performance'} (${fr(best.date)}), corrigée de ${weeks} semaines sans performance récente. Un test affinera.`,
     }
   }
   return { confidence: 'inconnue', basis: 'Aucune performance connue : fais le test de calibration (30 min) pour connaître tes allures.' }

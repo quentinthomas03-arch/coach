@@ -6,6 +6,9 @@ import { db } from '../../data/db'
 import { dismissProposal, loadToday, type TodayView } from '../../app/daily'
 import { applyProposal, markDone, markMissed } from '../../app/plan'
 import { saveActivityRpe } from '../../app/importer'
+import { getGoal, resultsAwaited, saveTestResult, TEST_TITLE } from '../../app/goals'
+import { parseTime, DISTANCES } from '../../domain/paces'
+import { useDbQuery as useResults } from '../useDbQuery'
 import { activityLabel } from '../../domain/activities'
 import { syncToWatch } from '../../app/sync'
 import { formatLongFr, todayISO } from '../../domain/dates'
@@ -240,6 +243,40 @@ function TabacCard({ view }: { view: TodayView }) {
   )
 }
 
+function Results({ today }: { today: string }) {
+  const list = useResults(() => resultsAwaited(today), [today])
+  return <>{(list ?? []).map((s) => <ResultCard key={s.id} s={s} today={today} />)}</>
+}
+
+function ResultCard({ s, today }: { s: PlannedSession; today: string }) {
+  const [v, setV] = useState('')
+  const isTest = s.title === TEST_TITLE
+  const goal = useResults(() => getGoal(), [])
+  const parsed = isTest ? Number(v.replace(',', '.')) : parseTime(v)
+  const ok = isTest ? parsed != null && parsed > 1 && parsed < 12 : !!parsed
+  return (
+    <section className="card space-y-2" aria-label="Résultat à saisir">
+      <p className="text-sm text-muted">Résultat à saisir</p>
+      <p className="font-semibold">{isTest ? 'Distance parcourue pendant les 30 min du test (km)' : 'Ton temps sur la course objectif'}</p>
+      <div className="flex gap-2">
+        <input className="field" inputMode={isTest ? 'decimal' : 'text'} placeholder={isTest ? 'ex. 5,8' : 'ex. 48:30'} value={v} onChange={(e) => setV(e.target.value)} aria-label="Résultat" />
+        <button
+          className="btn-primary shrink-0"
+          disabled={!ok}
+          onClick={() => {
+            const distanceM = isTest ? parsed! * 1000 : goal?.type === 'trail' ? (goal.trailKm ?? 0) * 1000 : DISTANCES[goal?.distance ?? '10k']
+            const timeSec = isTest ? 1800 : (parsed as number)
+            saveTestResult(s, { distanceM, timeSec }, today)
+          }}
+        >
+          Valider
+        </button>
+      </div>
+      <p className="text-xs text-muted">Tes allures et prédictions seront recalculées.</p>
+    </section>
+  )
+}
+
 export function Today() {
   const today = todayISO()
   const view = useDbQuery(() => loadToday(today), [today])
@@ -251,6 +288,7 @@ export function Today() {
         <h1 className="display text-3xl leading-tight">{greeting()}</h1>
       </div>
       <Messages list={view.messages} />
+      <Results today={today} />
       {view.awaitingRpe.map((a) => (
         <section key={a.id} className="card" aria-label="Séance détectée">
           <p className="text-sm text-muted">Séance détectée sur ta montre</p>

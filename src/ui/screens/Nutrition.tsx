@@ -6,6 +6,7 @@ import { AddFood } from '../components/AddFood'
 import { Gauge } from '../components/Segmented'
 import { useDbQuery } from '../useDbQuery'
 import { PageTitle } from '../Layout'
+import { CoursesTab, MenuTab, PanierTab } from './NutritionPlanning'
 
 const DAY_TYPE = { repos: 'Jour de repos', leger: 'Jour d’entraînement léger', soutenu: 'Jour d’entraînement soutenu' }
 const L = (ml: number) => `${(ml / 1000).toFixed(2).replace('.', ',')} L`
@@ -26,7 +27,34 @@ export function WaterButtons({ date }: { date: string }) {
   )
 }
 
+type Tab = 'journal' | 'menu' | 'courses' | 'panier'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'journal', label: 'Journal' },
+  { id: 'menu', label: 'Menu' },
+  { id: 'courses', label: 'Courses' },
+  { id: 'panier', label: 'Panier' },
+]
+
 export function Nutrition() {
+  const [tab, setTab] = useState<Tab>('journal')
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-1 p-1 rounded-btn bg-surface2 border border-line" role="tablist" aria-label="Nutrition">
+        {TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={`min-h-[40px] rounded-[12px] text-sm font-semibold ${tab === t.id ? 'bg-surface shadow text-ink' : 'text-muted'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'journal' && <Journal />}
+      {tab === 'menu' && <MenuTab />}
+      {tab === 'courses' && <CoursesTab />}
+      {tab === 'panier' && <PanierTab />}
+    </div>
+  )
+}
+
+function Journal() {
   const today = todayISO()
   const [date, setDate] = useState(today)
   const [adding, setAdding] = useState<Meal | null>(null)

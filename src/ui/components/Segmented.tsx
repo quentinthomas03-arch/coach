@@ -47,7 +47,7 @@ export function Gauge({ label, value, target, unit }: { label: string; value: nu
       <div className="flex justify-between text-sm mb-1">
         <span className="font-medium">{label}</span>
         <span className="num text-muted">
-          {value} / {target} {unit}
+          {value.toLocaleString('fr-FR')} / {target.toLocaleString('fr-FR')} {unit}
         </span>
       </div>
       <div

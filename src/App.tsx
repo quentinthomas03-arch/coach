@@ -10,13 +10,13 @@ import { DisclaimerGate } from './ui/components/Disclaimer'
 import { Today } from './ui/screens/Today'
 import { Settings } from './ui/screens/Settings'
 import { Diagnostic } from './ui/screens/Diagnostic'
-import { Placeholder } from './ui/screens/Placeholder'
 import { Onboarding } from './ui/screens/Onboarding'
 import { Week } from './ui/screens/Week'
 import { PlanScreen } from './ui/screens/PlanScreen'
 import { StrengthPlayer } from './ui/screens/StrengthPlayer'
 import { Tabac } from './ui/screens/Tabac'
 import { Suivi } from './ui/screens/Suivi'
+import { Nutrition } from './ui/screens/Nutrition'
 
 export default function App() {
   const [ready, setReady] = useState(false)
@@ -59,10 +59,7 @@ export default function App() {
           <Route path="/plan" element={<PlanScreen />} />
           <Route path="/renfo/:id" element={<StrengthPlayer />} />
           <Route path="/tabac" element={<Tabac />} />
-          <Route
-            path="/nutrition"
-            element={<Placeholder title="Nutrition" phase="Phase 4" items={['Objectifs calories et macros du jour', 'Journal rapide, favoris, repas d’hier', 'Hydratation selon séance et météo']} />}
-          />
+          <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/suivi" element={<Suivi />} />
           <Route path="/reglages" element={<Settings />} />
           <Route path="/diagnostic" element={<Diagnostic />} />

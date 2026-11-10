@@ -74,7 +74,7 @@ export async function createCustomFood(f: Omit<FoodItem, 'id' | 'source'>, datab
 export async function copyMeal(from: ISODate, to: ISODate, meal: Meal, database: CoachDB = db) {
   const src = await database.foodLog.where('date').equals(from).filter((e) => e.meal === meal).toArray()
   const at = new Date().toISOString()
-  await database.foodLog.bulkAdd(src.map(({ id: _id, ...e }) => ({ ...e, date: to, at })))
+  await database.foodLog.bulkAdd(src.map((e) => ({ ...e, id: undefined, date: to, at })))
   return src.length
 }
 

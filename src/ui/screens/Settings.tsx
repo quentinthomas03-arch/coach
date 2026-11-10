@@ -9,6 +9,7 @@ import { logSync, SETTING_RELAY_URL } from '../../integrations/intervalsStore'
 import { DisclaimerText } from '../components/Disclaimer'
 import { PageTitle } from '../Layout'
 import { PlanSettings } from './PlanSettings'
+import { NutritionSettings } from './NutritionSettings'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -240,6 +241,7 @@ export function Settings() {
     <div>
       <PageTitle>Réglages</PageTitle>
       <PlanSettings />
+      <NutritionSettings />
       <IntervalsSection />
       <BackupSection />
       <StorageSection />

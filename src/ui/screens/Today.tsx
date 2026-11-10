@@ -9,6 +9,9 @@ import { saveActivityRpe } from '../../app/importer'
 import { getGoal, resultsAwaited, saveTestResult, TEST_TITLE } from '../../app/goals'
 import { parseTime, DISTANCES } from '../../domain/paces'
 import { useDbQuery as useResults } from '../useDbQuery'
+import { nutritionDay } from '../../app/nutrition'
+import { WaterButtons } from './Nutrition'
+import { Gauge } from '../components/Segmented'
 import { activityLabel } from '../../domain/activities'
 import { syncToWatch } from '../../app/sync'
 import { formatLongFr, todayISO } from '../../domain/dates'
@@ -243,6 +246,25 @@ function TabacCard({ view }: { view: TodayView }) {
   )
 }
 
+function NutritionCard({ today }: { today: string }) {
+  const d = useResults(() => nutritionDay(today), [today])
+  if (!d || !d.targets) return null
+  return (
+    <section className="card space-y-3" aria-label="Nutrition et eau">
+      <Link to="/nutrition" className="flex items-baseline justify-between">
+        <h2 className="display text-lg">Nutrition</h2>
+        <span className="num font-semibold">
+          {d.eaten.kcal} <span className="text-sm text-muted font-normal">/ {d.targets.kcal} kcal ›</span>
+        </span>
+      </Link>
+      <Gauge label="Protéines" value={d.eaten.protein} target={d.targets.protein} unit="g" />
+      <Gauge label="Eau" value={Math.round(d.waterMl / 10) / 100} target={Math.round(d.hydration.ml / 10) / 100} unit="L" />
+      <WaterButtons date={today} />
+      {d.tips && <p className="text-sm text-muted">{d.tips.avant[0]}</p>}
+    </section>
+  )
+}
+
 function Results({ today }: { today: string }) {
   const list = useResults(() => resultsAwaited(today), [today])
   return <>{(list ?? []).map((s) => <ResultCard key={s.id} s={s} today={today} />)}</>
@@ -323,6 +345,7 @@ export function Today() {
           ))}
         </section>
       )}
+      <NutritionCard today={today} />
       <TabacCard view={view} />
     </div>
   )

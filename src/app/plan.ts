@@ -119,6 +119,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       formeBaseMinutes: cfg.formeBaseMinutes,
       goalTemplates: gw?.templates,
       raceDate: gw ? (await getSetting<{ date: ISODate }>(KEYS.goal, database))?.date : undefined,
+      trail: gw ? (await getSetting<{ type: string }>(KEYS.goal, database))?.type === 'trail' : false,
     })
     before.push(...existing)
     after.push(...plan.sessions.map((s) => mergeSync(s, existing.find((e) => e.id === s.id))))

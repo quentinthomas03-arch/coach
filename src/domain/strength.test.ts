@@ -51,6 +51,13 @@ describe('séances de renfo', () => {
     expect(s.durationMin).toBeLessThanOrEqual(15)
     expect(s.items.every((i) => i.sets >= 1)).toBe(true)
   })
+  it('trail : excentrique et équilibre', () => {
+    const s = buildStrengthSession({ template: 'B', level: 2, equipment: HOME, trail: true })
+    const ids = s.items.map((i) => i.exerciseId)
+    expect(ids).toContain('descente-marche')
+    expect(ids).toContain('equilibre')
+    expect(s.durationMin).toBeLessThanOrEqual(20)
+  })
   it('fonctionne sans aucun matériel', () => {
     for (const tpl of ['A', 'B'] as const)
       for (let l = 1; l <= 5; l++) expect(buildStrengthSession({ template: tpl, level: l, equipment: [] }).items.length).toBeGreaterThanOrEqual(5)

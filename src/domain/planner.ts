@@ -48,6 +48,8 @@ export interface WeekPlanInput {
   goalTemplates?: FormeSessionTemplate[]
   /** Objectif : date de la course (placée ce jour-là quoi qu'il arrive). */
   raceDate?: ISODate
+  /** Objectif trail : renfo orienté descentes et proprioception. */
+  trail?: boolean
   /** Forme continue : volume de course d'une semaine de charge, en minutes. */
   formeBaseMinutes?: number
 }
@@ -298,9 +300,13 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
     const runSameDay = allRunDays.includes(wd)
     const runMin = runSameDay ? (sessions.find((s) => s.date === dates[wd] && isRun(s.kind))?.durationMin ?? 0) : 0
     const maxMinutes = Math.min(20, (avail(wd)?.maxMinutes ?? 20) - runMin)
-    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes })
+    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes, trail: input.trail })
     const id = sessionId('renfo', dates[wd])
-    const reasons = [`Renfo ${template} niveau ${st.level}/5 : gainage, fessiers, mollets et stabilité pour courir sans se blesser.`]
+    const reasons = [
+      input.trail
+        ? `Renfo ${template} niveau ${st.level}/5 orienté trail : descentes (excentrique), équilibre, fessiers et mollets.`
+        : `Renfo ${template} niveau ${st.level}/5 : gainage, fessiers, mollets et stabilité pour courir sans se blesser.`,
+    ]
     reasons.push(runSameDay ? 'Placé après ta sortie facile du jour (pas d’autre créneau libre).' : 'Placé un jour sans course.')
     if (keyDays.length) reasons.push('Jamais la veille d’une séance clé (sortie longue, séance soutenue), pour arriver frais.')
     if (deload) reasons.push('Semaine allégée : une série de moins.')

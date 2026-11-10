@@ -169,6 +169,16 @@ export const EXERCISES: Exercise[] = [
     fallback: 'pont-fessier',
     levels: [r(2, 10, 45), r(3, 10, 45), r(3, 12, 45), r(3, 8, 45, 'sur une jambe, main au mur'), r(3, 10, 45, 'sur une jambe')],
   },
+  {
+    id: 'descente-marche',
+    name: 'Descente lente de marche',
+    description: 'Debout sur une marche, descends très lentement le talon de l’autre jambe jusqu’à effleurer le sol en pliant le genou d’appui, puis remonte.',
+    focus: 'jambes',
+    equipment: ['escalier'],
+    unilateral: true,
+    fallback: 'fente-arriere',
+    levels: [r(2, 6, 45, '4 s de descente'), r(3, 6, 45, '4 s de descente'), r(3, 8, 45, '4 s de descente'), r(3, 8, 45, '5 s de descente, marche plus haute'), r(3, 10, 45, '5 s de descente, kettlebell en main')],
+  },
 ]
 
 const byId = new Map(EXERCISES.map((e) => [e.id, e]))
@@ -252,11 +262,18 @@ export function buildStrengthSession(opts: {
   deload?: boolean
   /** Durée maximale (min) : si dépassée, on retire des séries aux exercices qui en ont le plus. */
   maxMinutes?: number
+  /** Objectif trail : travail excentrique (descentes) et proprioception renforcés. */
+  trail?: boolean
 }): StrengthSession {
   const level = Math.min(5, Math.max(1, Math.round(opts.level)))
   const available = new Set(opts.equipment)
   const ids = [...TEMPLATES[opts.template]]
-  if (level >= UPPER_FROM_LEVEL) ids.push('pompes-inclinees')
+  if (opts.trail) {
+    // Excentrique pour les descentes, à la place d'un exercice de gainage ; équilibre systématique.
+    const swap = ids.indexOf(opts.template === 'A' ? 'gainage-ventral' : 'dead-bug')
+    if (swap >= 0) ids[swap] = 'descente-marche'
+    if (!ids.includes('equilibre')) ids.push('equilibre')
+  } else if (level >= UPPER_FROM_LEVEL) ids.push('pompes-inclinees')
   const items = ids.map((id) => {
     const { ex, replaced } = resolve(id, available)
     const p = ex.levels[level - 1]

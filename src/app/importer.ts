@@ -4,6 +4,9 @@ import { addDays } from '../domain/dates'
 import { mapActivity, mapWellness, matchActivities } from '../domain/activities'
 import { explainError, IntervalsClient } from '../integrations/intervals'
 import { loadCredentials, logSync } from '../integrations/intervalsStore'
+import { getSetting, setSetting } from '../data/db'
+import { detectEfforts, estimateFitness, hrMaxOf, RECENT_DAYS, type Performance } from '../domain/fitness'
+import { KEYS } from './config'
 
 /**
  * Import depuis Intervals.icu (sens Garmin → appli) :
@@ -50,6 +53,7 @@ export async function importFromIntervals(today: ISODate, database: CoachDB = db
       await database.activities.bulkPut(acts)
       await database.wellness.bulkPut(wellness)
     })
+    await updateAutoPerformances(today, database)
     const message = `${fresh.length} activité(s), ${wellness.length} jour(s) de bien-être, ${matchedCount} séance(s) reconnue(s).`
     if (matchedCount) await logSync('import', true, message)
     return { ok: true, activities: fresh.length, wellnessDays: wellness.length, matched: matchedCount, message }
@@ -72,4 +76,31 @@ export async function saveActivityRpe(activityId: string, rpe: number, database:
   if (!a) return
   const id = a.matchedSessionId ? `fb-${a.matchedSessionId}` : `fb-act-${a.id}`
   await database.feedback.put({ id, sessionId: a.matchedSessionId, activityId: a.id, date: a.date, rpe, at: new Date().toISOString() })
+}
+
+/** Met à jour les performances détectées dans mes sorties ; prévient si la forme progresse. */
+export async function updateAutoPerformances(today: ISODate, database: CoachDB = db) {
+  const [acts, fb, profile, perfsRaw] = await Promise.all([
+    database.activities.where('date').between(addDays(today, -RECENT_DAYS), today, true, true).toArray(),
+    database.feedback.toArray(),
+    database.profile.get('me'),
+    getSetting<Performance[]>(KEYS.perfs, database),
+  ])
+  const perfs = perfsRaw ?? []
+  const before = estimateFitness(perfs, today)
+  const withRpe = acts.map((a) => ({ ...a, rpe: a.rpe ?? fb.find((f) => f.activityId === a.id || (a.matchedSessionId && f.sessionId === a.matchedSessionId))?.rpe }))
+  const age = profile ? new Date(today).getFullYear() - profile.birthYear : 35
+  const found = detectEfforts(withRpe, hrMaxOf(profile?.hrMax, age))
+  const fresh = found.filter((p) => !perfs.some((x) => x.id === p.id))
+  if (!fresh.length) return
+  const next = [...perfs, ...fresh]
+  await setSetting(KEYS.perfs, next, database)
+  const after = estimateFitness(next, today)
+  if (after.vdot != null && (before.vdot == null || after.vdot >= before.vdot + 0.5)) {
+    await setSetting(
+      KEYS.notice,
+      { at: today, messages: [`Nouvelle référence détectée (${fresh[fresh.length - 1].label?.toLowerCase()}) : tes allures sont mises à jour${before.vdot != null ? ` (VDOT ${before.vdot} → ${after.vdot})` : ''}. Bien joué !`] },
+      database,
+    )
+  }
 }

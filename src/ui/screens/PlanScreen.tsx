@@ -420,7 +420,7 @@ export function PlanScreen() {
             <li key={p.id} className="flex items-center justify-between py-2 gap-2">
               <span>
                 <strong>{p.label}</strong> · <span className="num">{formatTime(p.timeSec)}</span>
-                <span className="block text-xs text-muted">{formatLongFr(p.date)} · {p.source === 'test' ? 'test' : p.source === 'course' ? 'course' : 'record'}</span>
+                <span className="block text-xs text-muted">{formatLongFr(p.date)} · {p.source === 'test' ? 'test' : p.source === 'course' ? 'course' : p.source === 'auto' ? 'détectée dans tes sorties' : 'record'}</span>
               </span>
               <button className="text-sm text-muted underline min-h-[44px] px-2" onClick={() => confirm('Supprimer cette performance ?') && removePerformance(p.id)}>
                 Supprimer

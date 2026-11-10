@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateFitness } from './fitness'
+import { detectEfforts, estimateFitness, hrMaxOf } from './fitness'
 import { assessGoal, goalLabel, vdotAfter, vdotWeeks, volumeWeeks, type Goal } from './goals'
 import { DISTANCES } from './paces'
 
@@ -71,5 +71,32 @@ describe('bilan d’objectif', () => {
   it('libellés', () => {
     expect(goalLabel(goal({ distance: 'semi', targetTimeSec: 6300 }))).toBe('Semi-marathon en 1h45')
     expect(goalLabel(goal({ type: 'chrono', distance: '5k', targetTimeSec: 1380 }))).toBe('Record sur 5 km en 23:00')
+  })
+})
+
+describe('efforts détectés automatiquement', () => {
+  const base = { type: 'Run', durationSec: 1500, distanceM: 5200 }
+  it('garde les sorties dures, ignore les faciles et le trail', () => {
+    const e = detectEfforts(
+      [
+        { ...base, id: 'dur', date: '2026-12-10', rpe: 8 },
+        { ...base, id: 'fc', date: '2026-12-11', avgHr: 172 },
+        { ...base, id: 'facile', date: '2026-12-12', rpe: 4, avgHr: 140 },
+        { ...base, id: 'trail', date: '2026-12-13', type: 'TrailRun', rpe: 9 },
+        { ...base, id: 'court', date: '2026-12-14', rpe: 9, distanceM: 2000, durationSec: 600 },
+      ],
+      186,
+    )
+    expect(e.map((x) => x.id)).toEqual(['auto-dur', 'auto-fc'])
+    expect(e[0].source).toBe('auto')
+  })
+  it('l’effort détecté devient la référence (forme mesurée)', () => {
+    const f = estimateFitness([...records, ...detectEfforts([{ ...base, id: 'x', date: '2027-01-10', rpe: 8 }])], '2027-01-12')
+    expect(f.confidence).toBe('mesuree')
+    expect(f.basis).toMatch(/Sortie soutenue/)
+  })
+  it('FC max estimée', () => {
+    expect(hrMaxOf(undefined, 34)).toBe(184)
+    expect(hrMaxOf(191, 34)).toBe(191)
   })
 })

@@ -16,7 +16,7 @@ export interface Performance {
   date: ISODate
   distanceM: number
   timeSec: number
-  source: 'test' | 'course' | 'record'
+  source: 'test' | 'course' | 'record' | 'auto'
   label?: string
 }
 
@@ -65,4 +65,44 @@ export function estimateFitness(perfs: Performance[], today: ISODate): FitnessEs
     }
   }
   return { confidence: 'inconnue', basis: 'Aucune performance connue : fais le test de calibration (30 min) pour connaître tes allures.' }
+}
+
+/**
+ * EFFORTS SOUTENUS DÉTECTÉS DANS MES SORTIES (mise à jour des allures sans test).
+ *
+ * Une sortie compte comme une performance si elle a été courue « à fond régulier » :
+ * effort ressenti ≥ 8/10, ou FC moyenne ≥ 90 % de la FC max ; et 3 km minimum, 12 à 150 min.
+ * Les sorties faciles ne sont jamais prises (elles sous-estimeraient la forme). Comme seule la
+ * meilleure performance récente compte, un fractionné (moyenne avec récupérations) ne fait pas baisser l'estimation.
+ */
+export interface EffortCandidate {
+  id: string
+  date: ISODate
+  type: string
+  durationSec: number
+  distanceM?: number
+  avgHr?: number
+  rpe?: number
+}
+
+export const RUN_TYPES_FOR_EFFORT = new Set(['Run', 'TrailRun', 'VirtualRun', 'Treadmill'])
+
+export function detectEfforts(activities: EffortCandidate[], hrMax?: number): Performance[] {
+  const out: Performance[] = []
+  for (const a of activities) {
+    if (!RUN_TYPES_FOR_EFFORT.has(a.type) || a.type === 'TrailRun') continue // le trail (dénivelé) fausse l'allure
+    if (!a.distanceM || a.distanceM < 3000) continue
+    const min = a.durationSec / 60
+    if (min < 12 || min > 150) continue
+    const hard = (a.rpe ?? 0) >= 8 || (!!hrMax && !!a.avgHr && a.avgHr >= 0.9 * hrMax)
+    if (!hard) continue
+    const d = new Date(a.date + 'T12:00:00')
+    out.push({ id: `auto-${a.id}`, date: a.date, distanceM: a.distanceM, timeSec: a.durationSec, source: 'auto', label: `Sortie soutenue du ${d.getDate()}/${d.getMonth() + 1}` })
+  }
+  return out
+}
+
+/** FC max : mesurée si connue, sinon estimation de Tanaka (208 − 0,7 × âge), à prendre avec prudence. */
+export function hrMaxOf(measured: number | undefined, age: number): number {
+  return measured ?? Math.round(208 - 0.7 * age)
 }

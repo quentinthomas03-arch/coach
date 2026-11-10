@@ -108,6 +108,16 @@ describe('service du plan', () => {
   })
 })
 
+describe('surcharge prolongée', () => {
+  it('3 semaines de travail écrasant : une sortie de moins, retour à la normale ensuite', async () => {
+    for (let i = 1; i <= 15; i++) await database.checkins.put({ date: addDays(MONDAY, -i), physique: 3, moral: 3, travail: 1, viePerso: 3, at: '' })
+    await regenerate('Création', MONDAY, database)
+    const week = (await database.sessions.toArray()).filter((s) => s.date < addDays(MONDAY, 7))
+    expect(week.filter((s) => s.kind !== 'renfo')).toHaveLength(2)
+    expect(week.filter((s) => s.kind === 'renfo')).toHaveLength(1)
+  })
+})
+
 describe('pause', () => {
   it('pas de séance pendant la pause, retrait de la montre, reprise adaptée', async () => {
     await savePlanConfig(cfg({ repriseLevel: 5 }), database)

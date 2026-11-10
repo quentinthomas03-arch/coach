@@ -55,6 +55,8 @@ export interface CoachContext {
   paused?: boolean
   /** Messages ponctuels (ex. retour de pause). */
   notice?: string[]
+  /** Surcharge prolongée détectée (voir overload.ts). */
+  overload?: { active: boolean; reasons: string[] }
 }
 
 type Variants = Record<Tone, string>
@@ -109,6 +111,18 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
         action: { label: `Ajouter « ${ZONE_LABEL[z]} »`, type: 'add-zone', zone: z },
       })
     }
+  }
+
+  // 1 quater. Surcharge prolongée.
+  if (ctx.overload?.active) {
+    const why = ctx.overload.reasons.join(', ')
+    out.push(
+      say('surcharge', 'info', {
+        bienveillant: `Ces 3 dernières semaines : ${why}. J’allège ton entraînement pour qu’il reste un plaisir. Il reviendra à la normale tout seul quand ça ira mieux.`,
+        direct: `3 semaines de ${why}. J’allège le plan : une séance de moins. On remontera quand ta vie respirera un peu.`,
+        cash: `${why[0].toUpperCase() + why.slice(1)} depuis 3 semaines. Je coupe une séance. Pas négociable : récupère.`,
+      }, tone),
+    )
   }
 
   // 2. Sorties manquées.

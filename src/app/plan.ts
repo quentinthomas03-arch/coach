@@ -7,6 +7,7 @@ import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
 import type { FragileZone } from '../domain/routines'
 import { isPaused, resumeAfterPause, type Pause } from '../domain/pause'
+import { detectOverload, OVERLOAD_DAYS, OVERLOAD_VOLUME_FACTOR } from '../domain/overload'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
 import { goalWeek } from './goals'
@@ -87,12 +88,14 @@ export async function applyWeeklyReviews(today: ISODate, database: CoachDB = db)
 export async function computePlan(today: ISODate, database: CoachDB = db): Promise<{ before: PlannedSession[]; after: PlannedSession[]; notes: string[] }> {
   const cfg = await getPlanConfig(database)
   if (!cfg) return { before: [], after: [], notes: [] }
+  const notes: string[] = []
   const equipment = await getEquipment(database)
+  const overload = detectOverload(await database.checkins.where('date').between(addDays(today, -OVERLOAD_DAYS), today, true, true).toArray(), today)
+  if (overload.active) notes.push(`Allègement temporaire : ${overload.reasons.join(', ')} ces 3 dernières semaines.`)
   const zones = ((await database.profile.get('me'))?.injuries ?? []) as FragileZone[]
   const w0 = mondayOf(today)
   const before: PlannedSession[] = []
   const after: PlannedSession[] = []
-  const notes: string[] = []
   for (const weekStart of [w0, addDays(w0, 7)]) {
     const end = addDays(weekStart, 7)
     const existing = await database.sessions.where('date').between(weekStart, end, true, false).toArray()
@@ -110,8 +113,9 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       today,
       weekIndex: weekIndexOf(cfg.startDate, weekStart),
       availability: days,
-      runsPerWeek: cfg.runsPerWeek,
-      strengthPerWeek: cfg.strengthPerWeek,
+      // Surcharge prolongée : une sortie et un renfo de moins (minimum 2 sorties, 1 renfo).
+      runsPerWeek: overload.active && !gw ? Math.max(2, cfg.runsPerWeek - 1) : cfg.runsPerWeek,
+      strengthPerWeek: overload.active ? Math.max(1, cfg.strengthPerWeek - 1) : cfg.strengthPerWeek,
       longRunWeekday: cfg.longRunWeekday,
       repriseLevel: cfg.repriseLevel,
       strengthLevel: cfg.strengthLevel,
@@ -121,7 +125,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       zones,
       blockedDates: Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => isPaused(cfg.pause, d)),
       mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
-      formeBaseMinutes: cfg.formeBaseMinutes,
+      formeBaseMinutes: cfg.formeBaseMinutes && overload.active ? Math.round(cfg.formeBaseMinutes * OVERLOAD_VOLUME_FACTOR) : cfg.formeBaseMinutes,
       goalTemplates: gw?.templates,
       raceDate: gw ? (await getSetting<{ date: ISODate }>(KEYS.goal, database))?.date : undefined,
       trail: gw ? (await getSetting<{ type: string }>(KEYS.goal, database))?.type === 'trail' : false,

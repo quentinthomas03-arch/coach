@@ -14,6 +14,7 @@ import { buildLoadEntries, loadStatus, type LoadStatus } from '../domain/load'
 import type { Activity } from '../data/types'
 import type { FragileZone } from '../domain/routines'
 import { isPaused } from '../domain/pause'
+import { detectOverload } from '../domain/overload'
 
 /** Routine à l'ouverture de l'appli : bilan hebdo, recalcul, envoi montre. */
 export async function dailyRefresh(today: ISODate): Promise<{ sync?: SyncResult }> {
@@ -85,7 +86,8 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   const fragileZones = ((await db.profile.get('me'))?.injuries ?? []) as FragileZone[]
   const notice = await getSetting<{ at: ISODate; messages: string[] }>(KEYS.notice)
   const paused = isPaused(cfg?.pause, today)
-  const messages = cfg ? coachMessages({ paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
+  const overload = detectOverload(checkins, today)
+  const messages = cfg ? coachMessages({ overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
   return {
     today,
     sessions,

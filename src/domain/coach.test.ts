@@ -86,6 +86,9 @@ describe('voix du coach', () => {
     expect(rules(ctx({ ...base, paused: true }))).not.toContain('sorties-manquees')
     expect(rules(ctx({ ...base, notice: ['Bon retour !'] }))).toContain('notice')
   })
+  it('surcharge prolongée', () => {
+    expect(rules(ctx({ overload: { active: true, reasons: ['charge de travail très élevée (1,8/5 en moyenne)'] } }))).toContain('surcharge')
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

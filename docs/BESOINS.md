@@ -20,3 +20,20 @@ Quand je saisis un objectif, le coach doit me dire, avec ses raisons :
 - **Le temps nécessaire** pour y arriver de façon raisonnable, et la date au plus tôt.
 - **Réalisable ou non** à la date choisie, avec un verdict clair (réaliste / ambitieux / déconseillé) et des alternatives : décaler la date, viser un chrono intermédiaire, passer par un objectif d'étape.
 - Ce bilan est **réactualisé** au fil du plan (« tu es en avance / dans les clous / en retard »).
+
+## Un coach qui me parle
+- Les messages sont écrits comme un coach qui s'adresse à moi (tutoiement, phrases naturelles, concrètes), pas comme des indicateurs froids.
+- Il commente ma journée, ma semaine, mes progrès et mes écarts, avec ses raisons.
+- Contrainte : pas d'IA à l'exécution. Les messages viennent de règles et de modèles de phrases variés, ce qui garde des conseils prévisibles et vérifiables.
+
+## Sorties et alcool
+- Saisie rapide dans le check du matin : « hier soir : sortie ? alcool : aucun / 1-2 verres / 3+ ».
+- Effets : séance du jour allégée ou décalée si besoin, hydratation renforcée, calories prises en compte, message franc du coach si ça se répète avant des séances clés.
+
+## Arrêt du tabac (module dédié)
+- Je choisis ma date d'arrêt ; avant cette date, suivi facultatif des cigarettes par jour pour réduire.
+- Après : compteur de jours sans tabac, cigarettes évitées, argent économisé (prix du paquet configurable).
+- Étapes de récupération documentées (sources publiques : Tabac info service, Santé publique France), reliées à la course (souffle, endurance).
+- Bouton « SOS envie » : exercice de respiration de 2 min, mini-activité, rappel de mes raisons d'arrêter.
+- Le coach encourage et recadre sans culpabiliser ; une rechute n'est pas un échec : on note, on repart.
+- Orientation vers les professionnels : Tabac info service (39 89, gratuit), médecin, pharmacien ou sage-femme pour les substituts nicotiniques (remboursés sur prescription). Aucun conseil médical dans l'appli.

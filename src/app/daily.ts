@@ -15,6 +15,8 @@ import type { Activity } from '../data/types'
 import type { FragileZone } from '../domain/routines'
 import { isPaused } from '../domain/pause'
 import { detectOverload } from '../domain/overload'
+import { analyzeNote } from '../domain/notes'
+import { avgSleep, bedtime } from '../domain/sleep'
 
 /** Routine à l'ouverture de l'appli : bilan hebdo, recalcul, envoi montre. */
 export async function dailyRefresh(today: ISODate): Promise<{ sync?: SyncResult }> {
@@ -48,6 +50,8 @@ export interface TodayView {
   awaitingRpe: Activity[]
   load: LoadStatus
   pause?: import('../domain/pause').Pause
+  /** Heure de coucher conseillée ce soir (si séance clé demain ou sommeil court). */
+  bedtimeTonight?: { time: string; why: string }
 }
 
 export async function loadToday(today: ISODate): Promise<TodayView> {
@@ -87,7 +91,10 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   const notice = await getSetting<{ at: ISODate; messages: string[] }>(KEYS.notice)
   const paused = isPaused(cfg?.pause, today)
   const overload = detectOverload(checkins, today)
-  const messages = cfg ? coachMessages({ overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
+  const notes = await db.notes.where('date').between(addDays(today, -5), today, true, true).toArray()
+  const noteInsights = notes.flatMap(analyzeNote)
+  const sleepAvg = avgSleep((await db.wellness.where('date').between(addDays(today, -6), today, true, true).toArray()).map((w) => w.sleepHours))
+  const messages = cfg ? coachMessages({ noteInsights, sleepAvg, overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
   return {
     today,
     sessions,
@@ -102,6 +109,14 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     awaitingRpe: await activitiesAwaitingRpe(today),
     load,
     pause: paused ? cfg?.pause : undefined,
+    bedtimeTonight: (() => {
+      const tomorrowKey = sessions.find((s) => s.date === addDays(today, 1) && s.key && s.status === 'planned')
+      if (!tomorrowKey && !(sleepAvg != null && sleepAvg < 6.5)) return undefined
+      return {
+        time: bedtime(cfg?.wakeTime ?? '07:00', !!tomorrowKey),
+        why: tomorrowKey ? `${tomorrowKey.title.toLowerCase()} demain` : 'tes nuits sont courtes cette semaine',
+      }
+    })(),
   }
 }
 

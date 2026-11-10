@@ -115,6 +115,10 @@ export function Suivi() {
         {!sleep.length && <p className="text-xs text-muted">Sommeil et FC de repos viennent de ta montre via Intervals.icu (vérifie l’import du bien-être dans la connexion Garmin d’Intervals.icu).</p>}
       </section>
 
+      <a href="#/notes" className="btn-secondary w-full">
+        Mes notes
+      </a>
+
       <section className="space-y-2" aria-label="Poids">
         <h2 className="display text-lg">Poids</h2>
         <WeightForm />

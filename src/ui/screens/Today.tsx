@@ -405,6 +405,17 @@ export function Today() {
           ))}
         </section>
       )}
+      {view.bedtimeTonight && new Date().getHours() >= 15 && (
+        <section className="card" aria-label="Sommeil">
+          <p className="text-sm text-muted">Ce soir</p>
+          <p className="font-semibold">
+            Au lit vers <span className="num">{view.bedtimeTonight.time}</span> ({view.bedtimeTonight.why}).
+          </p>
+        </section>
+      )}
+      <Link to="/notes" className="btn-secondary w-full">
+        + Une note pour le coach
+      </Link>
       <SundayCard />
       <NutritionCard today={today} />
       <TabacCard view={view} />

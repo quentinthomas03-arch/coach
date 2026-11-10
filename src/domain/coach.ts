@@ -4,6 +4,7 @@ import type { Readiness } from './readiness'
 import type { LevelDecision } from './reprise'
 import type { TabacStatus } from './tabac'
 import { ZONE_LABEL, type FragileZone } from './routines'
+import type { NoteInsight } from './notes'
 
 /**
  * LA VOIX DU COACH.
@@ -57,6 +58,10 @@ export interface CoachContext {
   notice?: string[]
   /** Surcharge prolongée détectée (voir overload.ts). */
   overload?: { active: boolean; reasons: string[] }
+  /** Ce que le coach retient de mes notes récentes (voir notes.ts). */
+  noteInsights?: NoteInsight[]
+  /** Sommeil moyen des 7 dernières nuits (h), si connu. */
+  sleepAvg?: number
 }
 
 type Variants = Record<Tone, string>
@@ -183,6 +188,34 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
         cash: `${l} L hier. Pas assez. Gourde, maintenant.`,
       }, tone),
     )
+  }
+
+  // 5 ter. Notes libres (le plus récent de chaque type).
+  const fmtD = (d: ISODate) => new Intl.DateTimeFormat('fr-FR', { weekday: 'long' }).format(new Date(d + 'T12:00:00'))
+  const latest = (k: NoteInsight['kind']) => (ctx.noteInsights ?? []).filter((n) => n.kind === k).sort((a, b) => (a.date < b.date ? 1 : -1))[0]
+  const np = latest('douleur')
+  if (np) {
+    const z = np.zone
+    out.push({
+      rule: 'note-douleur',
+      kind: 'info',
+      text: `Dans ta note de ${fmtD(np.date)} : « ${np.excerpt} ». Si ça revient, signale-le dans le check du matin : j’adapterai les séances.`,
+      action: z && !(ctx.fragileZones ?? []).includes(z) ? { label: `Ajouter « ${ZONE_LABEL[z]} » aux zones fragiles`, type: 'add-zone', zone: z } : undefined,
+    })
+  }
+  const nt = latest('fatigue')
+  if (nt) out.push(say('note-fatigue', 'info', { bienveillant: `Tu notais être à plat (${fmtD(nt.date)}). Écoute-toi : une séance peut sauter sans drame.`, direct: `Noté : « ${nt.excerpt} ». Si ça dure, dis-le dans le check du matin, j’allègerai.`, cash: `« ${nt.excerpt} » : dors plus, et dis-le dans le check.` }, tone))
+  const ng = latest('positif')
+  if (ng && !np) out.push(say('note-positif', 'bravo', { bienveillant: `« ${ng.excerpt} » : c’est exactement ce qu’on cherche !`, direct: `« ${ng.excerpt} » : on continue comme ça.`, cash: `« ${ng.excerpt} ». Voilà.` }, tone))
+
+  // 5 quater. Sommeil.
+  if (ctx.sleepAvg != null && ctx.sleepAvg < 6.5) {
+    const h = ctx.sleepAvg.toFixed(1).replace('.', ',')
+    out.push(say('sommeil', 'recadrage', {
+      bienveillant: `${h} h de sommeil en moyenne cette semaine : c’est là que ton corps récupère. Essaie de te coucher 30 min plus tôt.`,
+      direct: `${h} h de sommeil en moyenne. La forme se construit la nuit : 30 min plus tôt au lit.`,
+      cash: `${h} h par nuit. Tu t’entraînes, mais tu ne récupères pas. Au lit.`,
+    }, tone))
   }
 
   // 6. Bravo : semaine complète.

@@ -25,6 +25,8 @@ export interface PlanConfig {
   tone: Tone
   /** Plan en pause (vacances, maladie, blessure). */
   pause?: Pause
+  /** Heure de lever habituelle (pour l'heure de coucher conseillée). */
+  wakeTime?: string
 }
 
 export const KEYS = {

@@ -89,6 +89,15 @@ describe('voix du coach', () => {
   it('surcharge prolongée', () => {
     expect(rules(ctx({ overload: { active: true, reasons: ['charge de travail très élevée (1,8/5 en moyenne)'] } }))).toContain('surcharge')
   })
+  it('notes : douleur relevée avec action, bonnes sensations saluées', () => {
+    const m = coachMessages(ctx({ noteInsights: [{ date: '2026-11-18', kind: 'douleur', zone: 'genou', excerpt: 'mal au genou' }] }))
+    expect(m.find((x) => x.rule === 'note-douleur')!.action?.zone).toBe('genou')
+    expect(rules(ctx({ noteInsights: [{ date: '2026-11-18', kind: 'positif', excerpt: 'super sensations' }] }))).toContain('note-positif')
+  })
+  it('sommeil court', () => {
+    expect(rules(ctx({ sleepAvg: 6.1 }))).toContain('sommeil')
+    expect(rules(ctx({ sleepAvg: 7.2 }))).not.toContain('sommeil')
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

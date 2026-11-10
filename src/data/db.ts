@@ -16,6 +16,7 @@ import type {
   WeekAvailability,
   Wellness,
 } from './types'
+import type { Note } from '../domain/notes'
 
 /**
  * Base locale. Chaque évolution du schéma = un nouveau `this.version(n)`
@@ -38,6 +39,7 @@ export class CoachDB extends Dexie {
   bodyMetrics!: Table<BodyMetric, string>
   planVersions!: Table<PlanVersion, number>
   syncLog!: Table<SyncLogEntry, number>
+  notes!: Table<Note, number>
 
   constructor(name = 'coach') {
     super(name)
@@ -58,6 +60,8 @@ export class CoachDB extends Dexie {
       planVersions: '++id, createdAt',
       syncLog: '++id, at, action',
     })
+    // v2 : notes libres. Les données existantes sont conservées telles quelles.
+    this.version(2).stores({ notes: '++id, date' })
   }
 }
 
@@ -77,6 +81,7 @@ export const TABLE_NAMES = [
   'bodyMetrics',
   'planVersions',
   'syncLog',
+  'notes',
 ] as const
 export type TableName = (typeof TABLE_NAMES)[number]
 

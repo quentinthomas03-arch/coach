@@ -64,6 +64,12 @@ export function PlanSettings() {
           { value: 'valider', label: 'Le coach propose, je valide' },
         ]}
       />
+      <div>
+        <label className="label" htmlFor="wake">
+          Heure de lever habituelle (pour l’heure de coucher conseillée)
+        </label>
+        <input id="wake" type="time" className="field" value={cfg.wakeTime ?? '07:00'} onChange={(e) => setCfg({ ...cfg, wakeTime: e.target.value })} />
+      </div>
       <Choice
         label="Ton du coach"
         cols={3}

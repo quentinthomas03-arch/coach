@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import Dexie from 'dexie'
 import { CoachDB, SETTING } from './db'
 import { BackupError, exportBackup, importBackup, isBackupDue, parseBackup } from './backup'
 
@@ -119,4 +120,32 @@ describe('rappel de sauvegarde', () => {
   it('est dû si jamais sauvegardé', () => expect(isBackupDue(undefined, now)).toBe(true))
   it('est dû après 30 jours', () => expect(isBackupDue('2026-10-01T12:00:00Z', now)).toBe(true))
   it("n'est pas dû avant 30 jours", () => expect(isBackupDue('2026-10-20T12:00:00Z', now)).toBe(false))
+})
+
+describe('migration de schéma', () => {
+  it('v1 → v2 : les données existantes sont conservées, la table des notes apparaît', async () => {
+    const name = `migr-${Date.now()}`
+    const v1 = new Dexie(name)
+    v1.version(1).stores({ settings: 'key', profile: 'id', sessions: 'id, date, kind, status, externalId', checkins: 'date' })
+    await v1.open()
+    await v1.table('checkins').put({ date: '2026-11-10', physique: 3, moral: 3, travail: 3, viePerso: 3, at: '' })
+    await v1.table('settings').put({ key: 'plan.config', value: { repriseLevel: 4 } })
+    v1.close()
+    const v2 = new CoachDB(name)
+    await v2.open()
+    expect(v2.verno).toBe(2)
+    expect(await v2.checkins.get('2026-11-10')).toMatchObject({ physique: 3 })
+    expect((await v2.settings.get('plan.config'))?.value).toEqual({ repriseLevel: 4 })
+    await v2.notes.add({ date: '2026-11-10', text: 'test', at: '' })
+    expect(await v2.notes.count()).toBe(1)
+    await v2.delete()
+  })
+  it('une sauvegarde v1 (sans notes) se restaure', async () => {
+    await seed(a)
+    const file = await exportBackup(a)
+    delete (file.tables as Record<string, unknown>).notes
+    await importBackup(parseBackup(JSON.stringify(file)), b)
+    expect(await b.notes.count()).toBe(0)
+    expect(await b.profile.get('me')).toBeDefined()
+  })
 })

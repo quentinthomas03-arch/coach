@@ -38,3 +38,8 @@ const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', 
 export function formatLongFr(s: string): string {
   return fmt.format(parseISODate(s))
 }
+
+/** Nombre de jours de `a` à `b` (positif si b est après a). */
+export function daysBetween(a: string, b: string): number {
+  return Math.round((parseISODate(b).getTime() - parseISODate(a).getTime()) / 86400000)
+}

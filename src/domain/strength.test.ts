@@ -51,6 +51,10 @@ describe('séances de renfo', () => {
     expect(s.durationMin).toBeLessThanOrEqual(15)
     expect(s.items.every((i) => i.sets >= 1)).toBe(true)
   })
+  it('fonctionne sans aucun matériel', () => {
+    for (const tpl of ['A', 'B'] as const)
+      for (let l = 1; l <= 5; l++) expect(buildStrengthSession({ template: tpl, level: l, equipment: [] }).items.length).toBeGreaterThanOrEqual(5)
+  })
   it('semaine allégée : une série de moins', () => {
     const n = buildStrengthSession({ template: 'A', level: 2, equipment: HOME, maxMinutes: 60 })
     const d = buildStrengthSession({ template: 'A', level: 2, equipment: HOME, maxMinutes: 60, deload: true })

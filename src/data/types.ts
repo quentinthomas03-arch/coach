@@ -123,7 +123,13 @@ export interface MorningCheckin {
   /** 1 (très chargé) à 5 (léger) */
   travail: number
   viePerso: number
+  /** intensite : 1 = gêne légère, 2 = douleur modérée, 3 = douleur forte */
   douleur?: { zone: string; intensite: number }
+  /** La veille au soir. */
+  sortie?: boolean
+  alcool?: 'aucun' | '1-2' | '3+'
+  /** Cigarettes fumées la veille (module tabac, facultatif). */
+  cigarettes?: number
   note?: string
   at: ISODateTime
 }

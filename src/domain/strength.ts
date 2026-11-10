@@ -8,6 +8,7 @@ import type { EquipmentId } from '../data/types'
  *   sont faites sans difficulté excessive (même logique que la reprise).
  * - Ciblage : gainage, fessiers, mollets, stabilité (puis excentrique/proprio pour le trail).
  * - Si le matériel manque, l'exercice est remplacé par une alternative au poids du corps.
+ * - Le tapis est un confort, pas une obligation : les exercices au sol se font aussi sans.
  */
 
 export type StrengthFocus = 'gainage' | 'fessiers' | 'mollets' | 'stabilite' | 'jambes' | 'haut-du-corps'
@@ -62,7 +63,7 @@ export const EXERCISES: Exercise[] = [
     name: 'Pont fessier',
     description: 'Allongé sur le dos, genoux pliés, pousse dans les talons pour monter le bassin et serre les fesses 1 s en haut.',
     focus: 'fessiers',
-    equipment: ['tapis'],
+    equipment: [],
     levels: [r(2, 12, 45), r(3, 12, 45), r(3, 15, 45), r(3, 10, 45, 'sur une jambe'), r(3, 12, 45, 'sur une jambe')],
   },
   {
@@ -87,7 +88,7 @@ export const EXERCISES: Exercise[] = [
     name: 'Gainage ventral (planche)',
     description: 'En appui sur les avant-bras, corps aligné de la tête aux pieds, ventre rentré, sans creuser le dos.',
     focus: 'gainage',
-    equipment: ['tapis'],
+    equipment: [],
     levels: [t(3, 20, 30, 'sur les genoux'), t(3, 20, 30), t(3, 30, 30), t(3, 40, 30), t(3, 45, 30, 'en levant un pied à tour de rôle')],
   },
   {
@@ -95,7 +96,7 @@ export const EXERCISES: Exercise[] = [
     name: 'Gainage latéral',
     description: 'Sur le côté en appui sur un avant-bras, bassin haut et corps aligné ; fais les deux côtés.',
     focus: 'gainage',
-    equipment: ['tapis'],
+    equipment: [],
     unilateral: true,
     levels: [t(2, 15, 30, 'sur les genoux'), t(3, 15, 30, 'sur les genoux'), t(3, 20, 30), t(3, 30, 30), t(3, 30, 30, 'jambe du dessus levée')],
   },
@@ -104,7 +105,7 @@ export const EXERCISES: Exercise[] = [
     name: 'Dead bug',
     description: 'Sur le dos, bras et genoux levés, allonge un bras et la jambe opposée sans décoller le bas du dos du sol.',
     focus: 'gainage',
-    equipment: ['tapis'],
+    equipment: [],
     levels: [r(2, 8, 30), r(3, 8, 30), r(3, 10, 30), r(3, 12, 30), r(3, 12, 30, 'mouvement très lent')],
   },
   {
@@ -147,7 +148,7 @@ export const EXERCISES: Exercise[] = [
     name: 'Ouverture de hanche (clamshell)',
     description: 'Allongé sur le côté, genoux pliés, pieds joints, ouvre le genou du dessus sans bouger le bassin ; fais les deux côtés.',
     focus: 'stabilite',
-    equipment: ['tapis'],
+    equipment: [],
     unilateral: true,
     levels: [r(2, 12, 30), r(3, 12, 30), r(3, 15, 30, 'élastique autour des genoux si dispo'), r(3, 15, 30, 'avec élastique'), r(3, 20, 30, 'avec élastique')],
   },

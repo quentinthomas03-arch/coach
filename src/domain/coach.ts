@@ -3,6 +3,7 @@ import { addDays, daysBetween } from './dates'
 import type { Readiness } from './readiness'
 import type { LevelDecision } from './reprise'
 import type { TabacStatus } from './tabac'
+import { ZONE_LABEL, type FragileZone } from './routines'
 
 /**
  * LA VOIX DU COACH.
@@ -19,6 +20,19 @@ export interface CoachMessage {
   rule: string
   kind: MessageKind
   text: string
+  /** Action proposée en 1 tap (ex. ajouter une zone fragile). */
+  action?: { label: string; type: 'add-zone'; zone: FragileZone }
+}
+
+/** Zones du check du matin → zones fragiles. */
+export const CHECKIN_ZONE: Record<string, FragileZone | undefined> = {
+  Genou: 'genou',
+  Mollet: 'mollet',
+  'Tendon d’Achille': 'achille',
+  Cheville: 'cheville',
+  Hanche: 'hanche',
+  Dos: 'dos',
+  Pied: 'pied',
 }
 
 export interface CoachContext {
@@ -35,6 +49,8 @@ export interface CoachContext {
   loadAlerts?: { rule: 'acwr' | 'volume'; text: string }[]
   /** Eau de la veille (si connue) et objectif. */
   waterYesterday?: { ml: number; target: number }
+  /** Zones fragiles déjà déclarées. */
+  fragileZones?: FragileZone[]
 }
 
 type Variants = Record<Tone, string>
@@ -71,6 +87,24 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
   for (const a of ctx.loadAlerts ?? []) {
     const lead: Variants = { bienveillant: 'Attention : ', direct: 'Stop, tu montes trop vite. ', cash: 'Freine. ' }
     out.push({ rule: `charge-${a.rule}`, kind: 'alerte', text: lead[tone] + a.text })
+  }
+
+  // 1 ter. Douleur répétée au même endroit → proposer d'en faire une zone fragile.
+  const last14 = ctx.checkins.filter((c) => inLast(today, 14)(c.date) || c.date === today)
+  const counts = new Map<FragileZone, number>()
+  for (const c of last14) {
+    const z = c.douleur ? CHECKIN_ZONE[c.douleur.zone] : undefined
+    if (z) counts.set(z, (counts.get(z) ?? 0) + 1)
+  }
+  for (const [z, n] of counts) {
+    if (n >= 2 && !(ctx.fragileZones ?? []).includes(z)) {
+      out.push({
+        rule: `zone-${z}`,
+        kind: 'recadrage',
+        text: `${ZONE_LABEL[z]} : gêne signalée ${n} fois en 2 semaines. Ajoute-la à tes zones fragiles : l’échauffement, les étirements et le renfo la cibleront.`,
+        action: { label: `Ajouter « ${ZONE_LABEL[z]} »`, type: 'add-zone', zone: z },
+      })
+    }
   }
 
   // 2. Sorties manquées.

@@ -8,6 +8,7 @@ import { syncToWatch } from '../../app/sync'
 import { todayISO } from '../../domain/dates'
 import { Choice, Stepper, Toggle } from '../components/Choice'
 import { DAY_NAMES } from '../components/WeekEditor'
+import { ZONE_LABEL, type FragileZone } from '../../domain/routines'
 
 const EQUIP_LABELS: Record<EquipmentId, string> = {
   tapis: 'Tapis', kettlebell: 'Kettlebell', elastiques: 'Élastiques', 'roue-abdos': 'Roue abdos',
@@ -18,16 +19,20 @@ const EQUIP_LABELS: Record<EquipmentId, string> = {
 export function PlanSettings() {
   const [cfg, setCfg] = useState<PlanConfig>()
   const [equip, setEquip] = useState<Equipment[]>([])
+  const [zones, setZones] = useState<FragileZone[]>([])
   const [msg, setMsg] = useState('')
   useEffect(() => {
     getPlanConfig().then(setCfg)
     db.equipment.toArray().then(setEquip)
+    db.profile.get('me').then((p) => setZones((p?.injuries ?? []) as FragileZone[]))
   }, [])
   if (!cfg) return null
   const today = todayISO()
   const save = async () => {
     await savePlanConfig(cfg)
     await db.equipment.bulkPut(equip)
+    const p = await db.profile.get('me')
+    if (p) await db.profile.put({ ...p, injuries: zones, updatedAt: new Date().toISOString() })
     const r = await regenerate('Réglages du plan modifiés', today)
     syncToWatch(today).catch(() => undefined)
     setMsg(r.changed ? (r.version?.status === 'pending' ? 'Changements proposés : valide-les dans Semaine.' : `Plan mis à jour (${r.version?.changes.length} changement(s), annulable dans Semaine).`) : 'Enregistré, aucun changement de séance.')
@@ -70,6 +75,23 @@ export function PlanSettings() {
           { value: 'cash', label: 'Cash' },
         ]}
       />
+      <fieldset>
+        <legend className="text-sm font-medium mb-1.5">Zones fragiles</legend>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(ZONE_LABEL) as FragileZone[]).map((z) => (
+            <button
+              key={z}
+              type="button"
+              aria-pressed={zones.includes(z)}
+              onClick={() => setZones(zones.includes(z) ? zones.filter((x) => x !== z) : [...zones, z])}
+              className={`min-h-[40px] px-3 rounded-full border text-sm ${zones.includes(z) ? 'bg-accent text-on-accent border-transparent font-semibold' : 'bg-surface2 border-line'}`}
+            >
+              {ZONE_LABEL[z]}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted mt-1">Échauffement, étirements et renfo ajoutent des exercices de prévention ciblés. En cas de douleur qui dure, consulte un médecin ou un kiné.</p>
+      </fieldset>
       <details>
         <summary className="font-medium min-h-[44px] flex items-center">Matériel</summary>
         <div className="divide-y divide-line">

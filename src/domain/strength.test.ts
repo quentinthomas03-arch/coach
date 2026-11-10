@@ -58,6 +58,14 @@ describe('séances de renfo', () => {
     expect(ids).toContain('equilibre')
     expect(s.durationMin).toBeLessThanOrEqual(20)
   })
+  it('zones fragiles : exercice de prévention en premier, durée tenue', () => {
+    const s = buildStrengthSession({ template: 'A', level: 2, equipment: HOME, zones: ['achille', 'dos'] })
+    const ids = s.items.map((i) => i.exerciseId)
+    expect(ids.slice(0, 2)).toEqual(['mollets-excentriques', 'bird-dog'])
+    expect(s.durationMin).toBeLessThanOrEqual(20)
+    // Sans escalier : version au sol.
+    expect(buildStrengthSession({ template: 'A', level: 2, equipment: [], zones: ['achille'] }).items[0].exerciseId).toBe('mollets-sol')
+  })
   it('fonctionne sans aucun matériel', () => {
     for (const tpl of ['A', 'B'] as const)
       for (let l = 1; l <= 5; l++) expect(buildStrengthSession({ template: tpl, level: l, equipment: [] }).items.length).toBeGreaterThanOrEqual(5)

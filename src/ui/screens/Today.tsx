@@ -3,7 +3,7 @@ import { useDbQuery } from '../useDbQuery'
 import { Link, useNavigate } from 'react-router-dom'
 import type { MorningCheckin, PlannedSession } from '../../data/types'
 import { db } from '../../data/db'
-import { dismissProposal, loadToday, type TodayView } from '../../app/daily'
+import { addFragileZone, dismissProposal, loadToday, type TodayView } from '../../app/daily'
 import { applyProposal, markDone, markMissed } from '../../app/plan'
 import { saveActivityRpe } from '../../app/importer'
 import { setWaterEstimate } from '../../app/nutrition'
@@ -29,7 +29,7 @@ function greeting() {
   return h < 12 ? 'Bonjour' : h < 18 ? 'Salut' : 'Bonsoir'
 }
 
-function Messages({ list }: { list: CoachMessage[] }) {
+function Messages({ list, today }: { list: CoachMessage[]; today: string }) {
   if (!list.length) return null
   const style = {
     alerte: 'border-danger/40 bg-danger/10',
@@ -40,10 +40,17 @@ function Messages({ list }: { list: CoachMessage[] }) {
   return (
     <section aria-label="Le coach" className="space-y-2">
       {list.map((m) => (
-        <p key={m.rule} className={`rounded-card border px-4 py-3 text-[15px] leading-snug ${style[m.kind]}`}>
-          <span className="sr-only">{m.kind} : </span>
-          {m.text}
-        </p>
+        <div key={m.rule} className={`rounded-card border px-4 py-3 text-[15px] leading-snug ${style[m.kind]}`}>
+          <p>
+            <span className="sr-only">{m.kind} : </span>
+            {m.text}
+          </p>
+          {m.action?.type === 'add-zone' && (
+            <button className="btn-secondary w-full mt-2" onClick={() => addFragileZone(m.action!.zone, today).then(() => syncToWatch(today))}>
+              {m.action.label}
+            </button>
+          )}
+        </div>
       ))}
     </section>
   )
@@ -357,7 +364,7 @@ export function Today() {
         <p className="text-muted text-sm first-letter:uppercase">{formatLongFr(today)}</p>
         <h1 className="display text-3xl leading-tight">{greeting()}</h1>
       </div>
-      <Messages list={view.messages} />
+      <Messages list={view.messages} today={today} />
       <Results today={today} />
       {view.awaitingRpe.map((a) => (
         <section key={a.id} className="card" aria-label="Séance détectée">

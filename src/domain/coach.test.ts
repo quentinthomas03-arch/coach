@@ -75,6 +75,12 @@ describe('voix du coach', () => {
     expect(rules(ctx({ waterYesterday: { ml: 750, target: 2250 } }))).toContain('eau')
     expect(rules(ctx({ waterYesterday: { ml: 1750, target: 2250 } }))).not.toContain('eau')
   })
+  it('douleur répétée au même endroit : propose une zone fragile (sauf si déjà déclarée)', () => {
+    const checkins = [check(0), check(2, { douleur: { zone: 'Genou', intensite: 1 } }), check(5, { douleur: { zone: 'Genou', intensite: 1 } })]
+    const m = coachMessages(ctx({ checkins }))
+    expect(m.find((x) => x.rule === 'zone-genou')!.action).toMatchObject({ type: 'add-zone', zone: 'genou' })
+    expect(rules(ctx({ checkins, fragileZones: ['genou'] }))).not.toContain('zone-genou')
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

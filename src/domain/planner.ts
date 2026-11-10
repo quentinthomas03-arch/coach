@@ -314,7 +314,7 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
     const runSameDay = allRunDays.includes(wd)
     const runMin = runSameDay ? (sessions.find((s) => s.date === dates[wd] && isRun(s.kind))?.durationMin ?? 0) : 0
     const maxMinutes = Math.min(20, (avail(wd)?.maxMinutes ?? 20) - runMin)
-    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes, trail: input.trail })
+    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes, trail: input.trail, zones: input.zones })
     const id = sessionId('renfo', dates[wd])
     const reasons = [
       input.trail
@@ -324,6 +324,7 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
     reasons.push(runSameDay ? 'Placé après ta sortie facile du jour (pas d’autre créneau libre).' : 'Placé un jour sans course.')
     if (keyDays.length) reasons.push('Jamais la veille d’une séance clé (sortie longue, séance soutenue), pour arriver frais.')
     if (deload) reasons.push('Semaine allégée : une série de moins.')
+    if (input.zones?.length) reasons.push('Commence par la prévention de tes zones fragiles.')
     sessions.push({
       id,
       date: dates[wd],

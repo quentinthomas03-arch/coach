@@ -1,4 +1,5 @@
 import type { EquipmentId } from '../data/types'
+import type { FragileZone } from './routines'
 
 /**
  * RENFORCEMENT MUSCULAIRE orienté course.
@@ -179,7 +180,54 @@ export const EXERCISES: Exercise[] = [
     fallback: 'fente-arriere',
     levels: [r(2, 6, 45, '4 s de descente'), r(3, 6, 45, '4 s de descente'), r(3, 8, 45, '4 s de descente'), r(3, 8, 45, '5 s de descente, marche plus haute'), r(3, 10, 45, '5 s de descente, kettlebell en main')],
   },
+  {
+    id: 'mollets-excentriques',
+    name: 'Mollets excentriques',
+    description: 'Sur une marche, monte sur les deux pointes, puis redescends très lentement sur une seule jambe, talon sous le niveau de la marche.',
+    focus: 'mollets',
+    equipment: ['escalier'],
+    unilateral: true,
+    fallback: 'mollets-sol',
+    levels: [r(2, 8, 45, '4 s de descente'), r(3, 8, 45, '4 s de descente'), r(3, 10, 45, '4 s de descente'), r(3, 12, 45, '5 s de descente'), r(3, 15, 45, '5 s de descente')],
+  },
+  {
+    id: 'bird-dog',
+    name: 'Bird dog',
+    description: 'À quatre pattes, dos plat, tends un bras et la jambe opposée sans bouger le bassin, tiens 2 s, alterne.',
+    focus: 'gainage',
+    equipment: [],
+    levels: [r(2, 8, 30), r(3, 8, 30), r(3, 10, 30), r(3, 12, 30), r(3, 12, 30, '3 s de maintien')],
+  },
+  {
+    id: 'short-foot',
+    name: 'Pied court (voûte plantaire)',
+    description: 'Pied à plat, rapproche la base du gros orteil du talon en creusant la voûte, sans recroqueviller les orteils, tiens puis relâche.',
+    focus: 'stabilite',
+    equipment: [],
+    unilateral: true,
+    levels: [t(2, 10, 20, 'assis'), t(3, 10, 20, 'assis'), t(3, 10, 20, 'debout'), t(3, 15, 20, 'debout'), t(3, 15, 20, 'sur un pied')],
+  },
+  {
+    id: 'pont-ischios',
+    name: 'Pont fessier pieds éloignés',
+    description: 'Comme le pont fessier, mais talons posés loin des fesses : on sent l’arrière des cuisses travailler.',
+    focus: 'fessiers',
+    equipment: [],
+    levels: [r(2, 10, 45), r(3, 10, 45), r(3, 12, 45), r(3, 8, 45, 'sur une jambe'), r(3, 10, 45, 'sur une jambe')],
+  },
 ]
+
+/** Exercice de prévention ajouté au renfo pour chaque zone fragile. */
+export const ZONE_EXERCISE: Record<FragileZone, string> = {
+  genou: 'descente-marche',
+  achille: 'mollets-excentriques',
+  mollet: 'mollets-excentriques',
+  cheville: 'equilibre',
+  hanche: 'clamshell',
+  dos: 'bird-dog',
+  pied: 'short-foot',
+  ischios: 'pont-ischios',
+}
 
 const byId = new Map(EXERCISES.map((e) => [e.id, e]))
 export function getExercise(id: string): Exercise {
@@ -264,6 +312,8 @@ export function buildStrengthSession(opts: {
   maxMinutes?: number
   /** Objectif trail : travail excentrique (descentes) et proprioception renforcés. */
   trail?: boolean
+  /** Zones fragiles : un exercice de prévention ciblé par zone (2 max par séance). */
+  zones?: FragileZone[]
 }): StrengthSession {
   const level = Math.min(5, Math.max(1, Math.round(opts.level)))
   const available = new Set(opts.equipment)
@@ -274,6 +324,10 @@ export function buildStrengthSession(opts: {
     if (swap >= 0) ids[swap] = 'descente-marche'
     if (!ids.includes('equilibre')) ids.push('equilibre')
   } else if (level >= UPPER_FROM_LEVEL) ids.push('pompes-inclinees')
+  // Prévention ciblée : en séance A les 2 premières zones, en B les suivantes (rotation).
+  const zoneIds = [...new Set((opts.zones ?? []).map((z) => ZONE_EXERCISE[z]))].filter((id) => !ids.includes(id))
+  const start = opts.template === 'B' && zoneIds.length > 2 ? 2 : 0
+  ids.unshift(...zoneIds.slice(start, start + 2))
   const items = ids.map((id) => {
     const { ex, replaced } = resolve(id, available)
     const p = ex.levels[level - 1]

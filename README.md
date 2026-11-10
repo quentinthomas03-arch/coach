@@ -10,6 +10,19 @@ Coach d'entraînement personnel sur iPhone : course à pied, renforcement muscul
 
 ---
 
+## Utilisation au quotidien
+
+| Écran | À quoi il sert |
+|---|---|
+| **Aujourd’hui** | Check du matin (4 taps : forme, moral, travail, vie perso, plus la soirée et une douleur éventuelle) → forme du jour vert/orange/rouge. Séance du jour avec « Pourquoi ? », état sur la montre et proposition d’allègement (tu acceptes ou tu gardes ta séance). Séance détectée par la montre → « c’était dur comment ? ». Messages du coach, nutrition et eau en 1 tap, tabac. Le dimanche : « Prépare ta semaine ». |
+| **Semaine** | Le plan de la semaine et de la suivante. Tu déplaces, verrouilles, retires ou ajoutes une séance. Tes dispos de la semaine en quelques taps. « Ce qui a changé » avec **Annuler** sur chaque changement. En mode « je valide », les propositions du coach à accepter ou refuser. |
+| **Plan** | Mode actuel (Reprise → Forme continue → Objectif). Fixer un objectif : le coach fait d’abord son **bilan** (où tu en es, temps nécessaire, réaliste ou non, date au plus tôt). Ma forme (VDOT) et mes allures, mes performances, le test de calibration de 30 min. |
+| **Nutrition** | Journal (objectifs du jour, eau, repères autour de la séance, repas), Menu de la semaine, Courses (liste par rayon, partageable), Panier du maraîcher (légumes de saison → idées de recettes). |
+| **Suivi** | Minutes et km par semaine, charge et garde-fous, régularité du renfo, sommeil et FC de repos, poids. |
+| **Réglages** | Plan (date de début, sorties, niveaux, ton du coach, mode des changements, matériel), Nutrition (profil, objectif de poids encadré, aliments évités, météo), Intervals.icu, sauvegarde, stockage, avertissement. |
+
+Le plan se recalcule tout seul à chaque ouverture de l’appli : import des séances faites, bilan de la semaine, envoi des 7 prochains jours de course sur la montre.
+
 ## Sommaire
 
 1. [Installer l'appli sur l'iPhone](#1-installer-lappli-sur-liphone)
@@ -155,10 +168,16 @@ Stack : React 19, Vite, TypeScript, Tailwind CSS, vite-plugin-pwa, Dexie (Indexe
 
 ```
 src/
-  domain/        Logique pure et testée (plan, allures, charge, renfo, nutrition). Aucune dépendance à l'interface.
+  domain/        Logique pure et testée, sans dépendance à l'interface :
+                 reprise, forme continue, objectifs (périodisation, bilan), allures (VDOT),
+                 planificateur de semaine, renfo, forme du jour, voix du coach, charge,
+                 nutrition, recettes, menu, saisons, tabac.
+  app/           Services qui relient le moteur aux données : plan (versions, annulation),
+                 envoi montre, import Intervals.icu, objectifs, nutrition, menu.
   data/          Schéma IndexedDB (Dexie), migrations, sauvegarde/restauration.
-  integrations/  Intervals.icu (puis météo, aliments).
+  integrations/  Intervals.icu, Open Food Facts, Open-Meteo, scan de code-barres.
   ui/            Écrans et composants.
+docs/            Besoins exprimés au fil de l'eau, décisions techniques, check-list de tests sur iPhone.
 ```
 
 ### Principes

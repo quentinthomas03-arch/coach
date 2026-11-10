@@ -2,6 +2,7 @@ import type { DayAvailability, EquipmentId, ISODate } from '../data/types'
 import { db, getSetting, setSetting, type CoachDB } from '../data/db'
 import type { Tone } from '../domain/coach'
 import type { TabacSettings } from '../domain/tabac'
+import type { Pause } from '../domain/pause'
 
 /** Réglages du plan, modifiables à tout moment dans l'appli. */
 export interface PlanConfig {
@@ -22,6 +23,8 @@ export interface PlanConfig {
   /** auto = changements appliqués avec possibilité d'annuler ; valider = je valide d'abord. */
   recalcMode: 'auto' | 'valider'
   tone: Tone
+  /** Plan en pause (vacances, maladie, blessure). */
+  pause?: Pause
 }
 
 export const KEYS = {
@@ -33,6 +36,7 @@ export const KEYS = {
   dismissedProposal: 'proposal.dismissed',
   goal: 'goal.current',
   perfs: 'perf.list',
+  notice: 'coach.notice',
 } as const
 
 export const DEFAULT_TEMPLATE: DayAvailability[] = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({

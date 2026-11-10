@@ -51,6 +51,10 @@ export interface CoachContext {
   waterYesterday?: { ml: number; target: number }
   /** Zones fragiles déjà déclarées. */
   fragileZones?: FragileZone[]
+  /** Plan en pause : pas de reproches. */
+  paused?: boolean
+  /** Messages ponctuels (ex. retour de pause). */
+  notice?: string[]
 }
 
 type Variants = Record<Tone, string>
@@ -243,5 +247,8 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
     }
   }
 
-  return out.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))
+  for (const n of ctx.notice ?? []) out.push({ rule: 'notice', kind: 'info', text: n })
+  // En pause : on garde les alertes santé et l'information, jamais de reproche.
+  const kept = ctx.paused ? out.filter((m) => m.kind === 'alerte' || m.kind === 'info' || m.rule.startsWith('tabac')).filter((m) => m.rule !== 'check-oublie') : out
+  return kept.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))
 }

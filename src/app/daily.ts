@@ -6,17 +6,21 @@ import { computeReadiness, proposeAdjustment, type Readiness, type SessionPropos
 import type { LevelDecision } from '../domain/reprise'
 import { tabacStatus, type TabacStatus } from '../domain/tabac'
 import { getPlanConfig, getTabac, KEYS } from './config'
-import { applyWeeklyReviews, regenerate } from './plan'
+import { applyWeeklyReviews, endPause, regenerate } from './plan'
 import { syncToWatch, type SyncResult } from './sync'
 import { activitiesAwaitingRpe, importFromIntervals } from './importer'
 import { nutritionDay } from './nutrition'
 import { buildLoadEntries, loadStatus, type LoadStatus } from '../domain/load'
 import type { Activity } from '../data/types'
 import type { FragileZone } from '../domain/routines'
+import { isPaused } from '../domain/pause'
 
 /** Routine à l'ouverture de l'appli : bilan hebdo, recalcul, envoi montre. */
 export async function dailyRefresh(today: ISODate): Promise<{ sync?: SyncResult }> {
-  if (!(await getPlanConfig())) return {}
+  const cfg0 = await getPlanConfig()
+  if (!cfg0) return {}
+  // Pause arrivée à échéance : reprise automatique.
+  if (cfg0.pause?.until && cfg0.pause.until < today) await endPause(today)
   // 1. Ce que j'ai fait (Garmin → Intervals.icu → appli), avant tout bilan.
   await importFromIntervals(today).catch(() => undefined)
   const decisions = await applyWeeklyReviews(today)
@@ -42,6 +46,7 @@ export interface TodayView {
   tabacReasons: string[]
   awaitingRpe: Activity[]
   load: LoadStatus
+  pause?: import('../domain/pause').Pause
 }
 
 export async function loadToday(today: ISODate): Promise<TodayView> {
@@ -78,7 +83,9 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   const yWater = await nutritionDay(addDays(today, -1))
   const waterYesterday = yWater.waterSource !== 'aucune' ? { ml: yWater.waterMl, target: yWater.hydration.ml } : undefined
   const fragileZones = ((await db.profile.get('me'))?.injuries ?? []) as FragileZone[]
-  const messages = cfg ? coachMessages({ today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
+  const notice = await getSetting<{ at: ISODate; messages: string[] }>(KEYS.notice)
+  const paused = isPaused(cfg?.pause, today)
+  const messages = cfg ? coachMessages({ paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
   return {
     today,
     sessions,
@@ -92,6 +99,7 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     tabacReasons: tabacCfg?.reasons ?? [],
     awaitingRpe: await activitiesAwaitingRpe(today),
     load,
+    pause: paused ? cfg?.pause : undefined,
   }
 }
 

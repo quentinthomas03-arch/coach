@@ -364,6 +364,11 @@ export function Today() {
         <p className="text-muted text-sm first-letter:uppercase">{formatLongFr(today)}</p>
         <h1 className="display text-3xl leading-tight">{greeting()}</h1>
       </div>
+      {view.pause && (
+        <Link to="/plan" className="block rounded-card border border-warn/40 bg-warn/10 px-4 py-3">
+          <strong>Plan en pause</strong> ({view.pause.reason}). Repose-toi bien. Touche ici pour reprendre quand tu es prêt.
+        </Link>
+      )}
       <Messages list={view.messages} today={today} />
       <Results today={today} />
       {view.awaitingRpe.map((a) => (

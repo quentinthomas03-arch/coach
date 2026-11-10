@@ -6,6 +6,7 @@ import { planWeek } from '../domain/planner'
 import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
 import type { FragileZone } from '../domain/routines'
+import { isPaused, resumeAfterPause, type Pause } from '../domain/pause'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
 import { goalWeek } from './goals'
@@ -118,6 +119,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       existing,
       ranPreviousSunday: prevSunday.some((s) => isRunSession(s) && s.status !== 'skipped'),
       zones,
+      blockedDates: Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => isPaused(cfg.pause, d)),
       mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
       formeBaseMinutes: cfg.formeBaseMinutes,
       goalTemplates: gw?.templates,
@@ -287,4 +289,28 @@ export async function applyProposal(next: PlannedSession, cause: string, databas
   if (!s) return
   await writeSessions([s], [{ ...next, locked: true, origin: 'moteur' }], database)
   await database.planVersions.add({ createdAt: new Date().toISOString(), cause, changes: diffSessions([s], [next]), before: [s], after: [next], status: 'applied' })
+}
+
+/* ---------- Pause ---------- */
+
+export async function startPause(pause: Pause, today: ISODate, database: CoachDB = db) {
+  const cfg = await getPlanConfig(database)
+  if (!cfg) return
+  await savePlanConfig({ ...cfg, pause }, database)
+  await regenerate(`Plan en pause (${pause.reason})`, today, database, { force: 'auto' })
+}
+
+/** Fin de pause : reprise adaptée à la durée et au motif de l'arrêt. */
+export async function endPause(today: ISODate, database: CoachDB = db) {
+  const cfg = await getPlanConfig(database)
+  if (!cfg?.pause) return
+  const hasGoal = !!(await getSetting(KEYS.goal, database))
+  const d = resumeAfterPause({ mode: cfg.mode ?? 'reprise', repriseLevel: cfg.repriseLevel, formeBaseMinutes: cfg.formeBaseMinutes }, cfg.pause, today, hasGoal)
+  await savePlanConfig(
+    { ...cfg, pause: undefined, mode: d.mode, repriseLevel: d.repriseLevel, formeBaseMinutes: d.formeBaseMinutes, lastReviewedWeek: addDays(mondayOf(today), -7) },
+    database,
+  )
+  await setSetting(KEYS.notice, { at: today, messages: d.messages }, database)
+  await regenerate('Fin de pause : reprise adaptée', today, database, { force: 'auto' })
+  return d
 }

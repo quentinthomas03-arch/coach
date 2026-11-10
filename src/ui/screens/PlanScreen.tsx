@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPlanConfig } from '../../app/config'
-import { weekIndexOf } from '../../app/plan'
+import { endPause, startPause, weekIndexOf } from '../../app/plan'
+import { PAUSE_LABEL, type PauseReason } from '../../domain/pause'
 import { abandonGoal, addPerformance, assess, getGoal, getPerformances, removePerformance, scheduleCalibrationTest, setGoal } from '../../app/goals'
 import { syncToWatch } from '../../app/sync'
 import { addDays, formatLongFr, mondayOf, todayISO } from '../../domain/dates'
@@ -208,6 +209,54 @@ function PerfForm({ onDone }: { onDone: () => void }) {
   )
 }
 
+function PauseCard({ paused, from, today }: { paused: boolean; from?: string; today: string }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState<PauseReason>('vacances')
+  const [until, setUntil] = useState('')
+  if (paused)
+    return (
+      <section className="card space-y-2 border-warn/50">
+        <h2 className="display text-lg">Plan en pause</h2>
+        <p className="text-sm text-muted">Depuis le {formatLongFr(from!)}. Aucune séance n’est planifiée ni envoyée sur la montre.</p>
+        <button className="btn-primary w-full" onClick={() => endPause(today).then(() => syncToWatch(today).catch(() => undefined))}>
+          Reprendre l’entraînement
+        </button>
+      </section>
+    )
+  return open ? (
+    <section className="card space-y-3">
+      <h2 className="display text-lg">Mettre le plan en pause</h2>
+      <Choice cols={2} value={reason} onChange={setReason} options={(Object.keys(PAUSE_LABEL) as PauseReason[]).map((r) => ({ value: r, label: PAUSE_LABEL[r] }))} />
+      <div>
+        <label className="label" htmlFor="until">
+          Retour prévu (facultatif)
+        </label>
+        <input id="until" type="date" className="field" min={today} value={until} onChange={(e) => setUntil(e.target.value)} />
+      </div>
+      <p className="text-xs text-muted">Au retour, le coach adapte la reprise à la durée et au motif de l’arrêt.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <button className="btn-secondary" onClick={() => setOpen(false)}>
+          Annuler
+        </button>
+        <button
+          className="btn-primary"
+          onClick={async () => {
+            await startPause({ from: today, reason, until: until || undefined }, today)
+            syncToWatch(today).catch(() => undefined)
+            setOpen(false)
+          }}
+        >
+          Mettre en pause
+        </button>
+      </div>
+    </section>
+  ) : (
+    <button className="btn-secondary w-full" onClick={() => setOpen(true)}>
+      Pause : vacances, maladie, blessure
+    </button>
+  )
+}
+
 export function PlanScreen() {
   const today = todayISO()
   const [creating, setCreating] = useState(false)
@@ -385,6 +434,8 @@ export function PlanScreen() {
           </button>
         )}
       </section>
+
+      <PauseCard paused={!!cfg.pause && cfg.pause.from <= today} from={cfg.pause?.from} today={today} />
 
       <Link to="/reglages#plan" className="btn-secondary w-full">
         Réglages du plan

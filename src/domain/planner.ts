@@ -54,6 +54,8 @@ export interface WeekPlanInput {
   trail?: boolean
   /** Zones fragiles : échauffement, étirements et renfo ciblés. */
   zones?: FragileZone[]
+  /** Jours sans aucune séance (pause : vacances, maladie, blessure). */
+  blockedDates?: ISODate[]
   /** Forme continue : volume de course d'une semaine de charge, en minutes. */
   formeBaseMinutes?: number
 }
@@ -122,7 +124,7 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
   const notes: string[] = []
   const dates = Array.from({ length: 7 }, (_, i) => addDays(input.weekStart, i))
   const avail = (wd: number) => input.availability.find((a) => a.weekday === wd)
-  const open = (wd: number) => dates[wd] >= input.planStart && dates[wd] >= input.today
+  const open = (wd: number) => dates[wd] >= input.planStart && dates[wd] >= input.today && !(input.blockedDates ?? []).includes(dates[wd])
 
   const kept = input.existing.filter((s) => isKept(s, input.today))
   // Une séance ratée ou retirée garde sa place dans l'historique mais ne compte pas :

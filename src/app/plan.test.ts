@@ -3,7 +3,7 @@ import { CoachDB } from '../data/db'
 import { addDays } from '../domain/dates'
 import { IntervalsClient } from '../integrations/intervals'
 import { KEYS, savePlanConfig, type PlanConfig } from './config'
-import { acceptVersion, applyWeeklyReviews, markDone, moveSession, regenerate, rejectVersion, removeSession, undoVersion } from './plan'
+import { acceptVersion, applyWeeklyReviews, endPause, markDone, moveSession, regenerate, rejectVersion, removeSession, startPause, undoVersion } from './plan'
 import { sessionsToSend, syncToWatch } from './sync'
 
 const MONDAY = '2026-11-16'
@@ -105,6 +105,21 @@ describe('service du plan', () => {
     expect((await database.settings.get(KEYS.plan))!.value).toMatchObject({ repriseLevel: 3, lastReviewedWeek: MONDAY })
     // Idempotent.
     expect(await applyWeeklyReviews(addDays(MONDAY, 7), database)).toEqual([])
+  })
+})
+
+describe('pause', () => {
+  it('pas de séance pendant la pause, retrait de la montre, reprise adaptée', async () => {
+    await savePlanConfig(cfg({ repriseLevel: 5 }), database)
+    await regenerate('Création', MONDAY, database)
+    const run = (await database.sessions.toArray()).find((s) => s.kind === 'marche-course')!
+    await database.sessions.update(run.id, { sync: { status: 'sent' } })
+    await startPause({ from: MONDAY, reason: 'maladie' }, MONDAY, database)
+    expect((await database.sessions.toArray()).filter((s) => s.date >= MONDAY)).toHaveLength(0)
+    expect((await database.settings.get(KEYS.pendingDeletes))!.value).toContain(run.externalId)
+    const d = await endPause(addDays(MONDAY, 14), database)
+    expect(d!.repriseLevel).toBe(2)
+    expect((await database.sessions.toArray()).some((s) => s.date >= addDays(MONDAY, 14))).toBe(true)
   })
 })
 

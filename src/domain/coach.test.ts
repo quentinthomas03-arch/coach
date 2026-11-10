@@ -81,6 +81,11 @@ describe('voix du coach', () => {
     expect(m.find((x) => x.rule === 'zone-genou')!.action).toMatchObject({ type: 'add-zone', zone: 'genou' })
     expect(rules(ctx({ checkins, fragileZones: ['genou'] }))).not.toContain('zone-genou')
   })
+  it('en pause : aucun reproche', () => {
+    const base = { sessions: [sess(2, 'endurance', 'missed'), sess(4, 'endurance', 'missed')] }
+    expect(rules(ctx({ ...base, paused: true }))).not.toContain('sorties-manquees')
+    expect(rules(ctx({ ...base, notice: ['Bon retour !'] }))).toContain('notice')
+  })
   it('rien de spécial = pas de bruit', () => {
     expect(coachMessages(ctx({}))).toEqual([])
   })

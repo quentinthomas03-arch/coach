@@ -5,6 +5,7 @@ import { diffSessions } from '../domain/changes'
 import { planWeek } from '../domain/planner'
 import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
+import type { FragileZone } from '../domain/routines'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
 import { goalWeek } from './goals'
@@ -86,6 +87,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
   const cfg = await getPlanConfig(database)
   if (!cfg) return { before: [], after: [], notes: [] }
   const equipment = await getEquipment(database)
+  const zones = ((await database.profile.get('me'))?.injuries ?? []) as FragileZone[]
   const w0 = mondayOf(today)
   const before: PlannedSession[] = []
   const after: PlannedSession[] = []
@@ -115,6 +117,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       equipment,
       existing,
       ranPreviousSunday: prevSunday.some((s) => isRunSession(s) && s.status !== 'skipped'),
+      zones,
       mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
       formeBaseMinutes: cfg.formeBaseMinutes,
       goalTemplates: gw?.templates,

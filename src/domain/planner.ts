@@ -3,6 +3,7 @@ import { addDays, weekdayIndex } from './dates'
 import { getLevel, isDeloadWeek, repriseLabel, repriseWorkout } from './reprise'
 import { buildStrengthSession, strengthDescription } from './strength'
 import { easyWorkout, fartlekWorkout, formeWeek, weekMinutes, type FormeSessionTemplate } from './forme'
+import { withRoutines, type FragileZone } from './routines'
 import { estimateDurationSec, toIntervalsText, type Workout } from './workout'
 
 /**
@@ -18,7 +19,8 @@ import { estimateDurationSec, toIntervalsText, type Workout } from './workout'
  */
 
 const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
-export const MIN_RUN_MIN = 25
+/** Durée minimale d'un créneau course : séance + échauffement guidé + étirements. */
+export const MIN_RUN_MIN = 35
 export const MIN_STRENGTH_MIN = 15
 
 export interface WeekPlanInput {
@@ -50,6 +52,8 @@ export interface WeekPlanInput {
   raceDate?: ISODate
   /** Objectif trail : renfo orienté descentes et proprioception. */
   trail?: boolean
+  /** Zones fragiles : échauffement, étirements et renfo ciblés. */
+  zones?: FragileZone[]
   /** Forme continue : volume de course d'une semaine de charge, en minutes. */
   formeBaseMinutes?: number
 }
@@ -61,6 +65,7 @@ export interface WeekPlan {
 }
 
 const isRun = (k: SessionKind) => k !== 'renfo' && k !== 'repos'
+const mins = (w: Workout) => Math.round(estimateDurationSec(w) / 60)
 
 /** Une séance existante est conservée telle quelle si verrouillée, faite, ou dans le passé. */
 export function isKept(s: PlannedSession, today: ISODate): boolean {
@@ -225,13 +230,15 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
         input.mode === 'objectif' ? `${weekLabel} · plan objectif.` : `${weekLabel} · forme continue, semaine ${(input.weekIndex % 4) + 1}/4 du cycle.`,
         t.reason,
       ]
+      const extra = 9 // échauffement guidé + étirements
       let workout = t.workout
-      let minutes = t.minutes
-      if (minutes > max) {
-        minutes = max
-        workout = t.key && t.kind !== 'sortie-longue' ? (t.kind === 'fractionne' ? fartlekWorkout(max).workout : t.workout) : easyWorkout(max)
+      if (t.minutes + extra > max) {
+        const m = max - extra
+        workout = t.key && t.kind !== 'sortie-longue' ? (t.kind === 'fractionne' ? fartlekWorkout(m).workout : t.workout) : easyWorkout(m)
         reasons.push(`Raccourcie pour tenir dans tes ${max} min disponibles.`)
       }
+      workout = withRoutines(workout, input.zones, { stretch: t.kind !== 'test' })
+      reasons.push(t.kind === 'test' ? 'Échauffement guidé obligatoire avant le départ.' : 'Échauffement guidé au début et étirements à la fin : ils font partie de la séance.')
       if (deload && input.mode !== 'objectif') reasons.push('Semaine allégée.')
       const id = sessionId('course', dates[wd])
       if (t.key) generatedKeyDays.push(wd)
@@ -240,7 +247,7 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
         date: dates[wd],
         kind: t.kind,
         title: t.title,
-        durationMin: Math.round(estimateDurationSec(workout) / 60),
+        durationMin: mins(workout),
         workoutText: toIntervalsText(workout),
         workout,
         reasons,
@@ -258,7 +265,8 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
       const reasons = [`${weekLabel} · reprise niveau ${level}/9.`]
       let lvl = level
       let isLong = long
-      let w = repriseWorkout(lvl, isLong)
+      const build = () => withRoutines(repriseWorkout(lvl, isLong), input.zones)
+      let w = build()
       if (long) reasons.push(`Sortie longue du ${WEEKDAYS[wd]} : ${repriseLabel(lvl, true)}, toujours à allure de conversation.`)
       else reasons.push(`${repriseLabel(lvl)}, à allure de conversation (zone 2).`)
       if (deload) reasons.push('Semaine allégée.')
@@ -269,9 +277,10 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
         } else if (lvl > 1) {
           lvl -= 1
         } else break
-        w = repriseWorkout(lvl, isLong)
+        w = build()
       }
       if (lvl !== level || isLong !== long) reasons.push(`Raccourcie pour tenir dans tes ${max} min disponibles.`)
+      reasons.push('Échauffement guidé au début et étirements à la fin : ils font partie de la séance.')
       if (missedRun && dates[wd] > missedRun.date) reasons.push(`Remplace la séance non faite du ${WEEKDAYS[weekdayIndex(missedRun.date)]}.`)
       if (long) generatedKeyDays.push(wd)
       sessions.push(runSession(dates[wd], w, { long, level: lvl, reasons }))

@@ -7,6 +7,7 @@ import { deloadFlags, goalWeekTemplates, peakMinutesFor, phasesFor, taperWeeksFo
 import type { FormeSessionTemplate } from '../domain/forme'
 import { buildLoadEntries } from '../domain/load'
 import { estimateDurationSec, toIntervalsText, type Workout } from '../domain/workout'
+import { withRoutines, type FragileZone } from '../domain/routines'
 import { getPlanConfig, KEYS, type PlanConfig } from './config'
 import { addMySession, regenerate } from './plan'
 
@@ -106,7 +107,8 @@ export function calibrationWorkout(): Workout {
 }
 
 export async function scheduleCalibrationTest(date: ISODate, today: ISODate, database: CoachDB = db) {
-  const w = calibrationWorkout()
+  const zones = ((await database.profile.get('me'))?.injuries ?? []) as FragileZone[]
+  const w = withRoutines(calibrationWorkout(), zones)
   return addMySession(
     {
       date,

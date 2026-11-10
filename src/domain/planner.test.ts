@@ -65,13 +65,13 @@ describe('planWeek', () => {
   })
 
   it('respecte les jours indisponibles et la durée max', () => {
-    const { sessions } = planWeek(input({ availability: avail([0, 45, 0, 45, 0, 0, 30]) }))
+    const { sessions } = planWeek(input({ availability: avail([0, 45, 0, 45, 0, 0, 40]) }))
     for (const s of sessions) {
       const wd = weekdayIndex(s.date)
       expect([1, 3, 6]).toContain(wd)
     }
     const sun = sessions.find((s) => weekdayIndex(s.date) === 6)!
-    expect(sun.durationMin).toBeLessThanOrEqual(30)
+    expect(sun.durationMin).toBeLessThanOrEqual(40)
     expect(sun.reasons.join(' ')).toMatch(/Raccourcie/)
   })
 
@@ -145,21 +145,23 @@ describe('planWeek', () => {
   })
 
   it('forme continue : longue le dimanche, séance soutenue loin d’elle, renfo jamais la veille', () => {
-    const { sessions } = planWeek(input({ mode: 'forme', formeBaseMinutes: 160, weekIndex: 1, ranPreviousSunday: true }))
+    const { sessions } = planWeek(input({ mode: 'forme', formeBaseMinutes: 160, weekIndex: 1, ranPreviousSunday: true, availability: avail([90, 90, 90, 90, 90, 90, 120]) }))
     const long = sessions.find((s) => s.kind === 'sortie-longue')!
     const q = sessions.find((s) => s.kind === 'fractionne')!
     expect(weekdayIndex(long.date)).toBe(6)
     expect(Math.abs(weekdayIndex(q.date) - 6)).toBeGreaterThan(1)
     const keys = days(sessions, (s) => !!s.key)
     for (const d of strengthDays(sessions)) expect(keys).not.toContain(d + 1)
-    const runMin = sessions.filter((s) => s.kind !== 'renfo').reduce((a, s) => a + s.durationMin, 0)
-    expect(Math.abs(runMin - 160)).toBeLessThanOrEqual(5)
+    const runs = sessions.filter((s) => s.kind !== 'renfo')
+    const runMin = runs.reduce((a, s) => a + s.durationMin, 0)
+    expect(Math.abs(runMin - (160 + 9 * runs.length))).toBeLessThanOrEqual(5) // + échauffement et étirements
+    expect(runs.every((s) => s.workoutText!.includes('Mobilité et gammes') && s.workoutText!.includes('Étirements doux'))).toBe(true)
   })
 
   it('forme continue : semaine allégée sans séance soutenue', () => {
     const { sessions } = planWeek(input({ mode: 'forme', formeBaseMinutes: 160, weekIndex: 3 }))
     expect(sessions.some((s) => s.kind === 'fractionne')).toBe(false)
-    expect(sessions.filter((s) => s.kind !== 'renfo').reduce((a, s) => a + s.durationMin, 0)).toBeLessThanOrEqual(125)
+    expect(sessions.filter((s) => s.kind !== 'renfo').reduce((a, s) => a + s.durationMin, 0)).toBeLessThanOrEqual(125 + 27)
   })
 
   const goal: Goal = { id: 'g', type: 'route', distance: '10k', targetTimeSec: 2700, date: addDays(MONDAY, 6), createdAt: '' }

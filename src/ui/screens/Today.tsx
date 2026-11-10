@@ -199,9 +199,14 @@ function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
               Commencer le renfo
             </button>
           ) : (
-            <button className="btn-primary col-span-2" onClick={() => setRpe(true)}>
-              C’est fait
-            </button>
+            <>
+              <button className="btn-primary col-span-2" onClick={() => nav('/routine/echauffement')}>
+                Échauffement guidé (4 min)
+              </button>
+              <button className="btn-secondary col-span-2" onClick={() => setRpe(true)}>
+                C’est fait
+              </button>
+            </>
           )}
           {s.kind === 'renfo' && (
             <button className="btn-secondary" onClick={() => setRpe(true)}>
@@ -221,6 +226,11 @@ function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
             setRpe(false)
           }}
         />
+      )}
+      {s.status === 'done' && s.kind !== 'renfo' && (
+        <button className="btn-secondary w-full mt-3" onClick={() => nav('/routine/etirements')}>
+          Étirements guidés (5 min)
+        </button>
       )}
     </section>
   )

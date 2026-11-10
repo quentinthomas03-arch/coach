@@ -7,6 +7,7 @@ import { acceptVersion, addMySession, computePlan, markDone, moveSession, regene
 import { syncToWatch } from '../../app/sync'
 import { addDays, formatLongFr, mondayOf, todayISO } from '../../domain/dates'
 import { repriseWorkout } from '../../domain/reprise'
+import { withRoutines, type FragileZone } from '../../domain/routines'
 import { estimateDurationSec, toIntervalsText } from '../../domain/workout'
 import { Choice } from '../components/Choice'
 import { LockTag, StatusTag, WatchBadge, sessionSummary } from '../components/SessionBits'
@@ -100,8 +101,9 @@ function AddSession({ weekStart, today, onClose }: { weekStart: string; today: s
         <button
           className="btn-primary"
           onClick={async () => {
-            const w = repriseWorkout(9)
-            w.blocks[1].steps[0].durationSec = Math.max(5, minutes - 10) * 60
+            const base = repriseWorkout(9)
+            base.blocks[1].steps[0].durationSec = Math.max(5, minutes - 19) * 60
+            const w = withRoutines(base, ((await db.profile.get('me'))?.injuries ?? []) as FragileZone[])
             await addMySession(
               { date, kind: 'endurance', title: 'Course facile (ajoutée)', durationMin: Math.round(estimateDurationSec(w) / 60), workout: w, workoutText: toIntervalsText(w), reasons: ['Ajoutée par toi.'] },
               today,

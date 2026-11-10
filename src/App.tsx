@@ -17,6 +17,7 @@ import { StrengthPlayer } from './ui/screens/StrengthPlayer'
 import { Tabac } from './ui/screens/Tabac'
 import { Suivi } from './ui/screens/Suivi'
 import { Nutrition } from './ui/screens/Nutrition'
+import { RoutinePlayer } from './ui/screens/RoutinePlayer'
 
 export default function App() {
   const [ready, setReady] = useState(false)
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/plan" element={<PlanScreen />} />
           <Route path="/renfo/:id" element={<StrengthPlayer />} />
           <Route path="/tabac" element={<Tabac />} />
+          <Route path="/routine/:id" element={<RoutinePlayer />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/suivi" element={<Suivi />} />
           <Route path="/reglages" element={<Settings />} />

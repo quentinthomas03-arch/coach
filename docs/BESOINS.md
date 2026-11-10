@@ -31,6 +31,8 @@ Quand je saisis un objectif, le coach doit me dire, avec ses raisons :
 - Effets : séance du jour allégée ou décalée si besoin, hydratation renforcée, calories prises en compte, message franc du coach si ça se répète avant des séances clés.
 
 ## Arrêt du tabac (module dédié)
+- **Date visée : 1er janvier 2027.** Module livré en Phase 1 pour couvrir la préparation (novembre-décembre) puis le jour J.
+- Préparation : compte à rebours, réduction facultative, liste de mes raisons, rappel de prendre rendez-vous avec un pro avant la date.
 - Je choisis ma date d'arrêt ; avant cette date, suivi facultatif des cigarettes par jour pour réduire.
 - Après : compteur de jours sans tabac, cigarettes évitées, argent économisé (prix du paquet configurable).
 - Étapes de récupération documentées (sources publiques : Tabac info service, Santé publique France), reliées à la course (souffle, endurance).

@@ -239,11 +239,6 @@ export function Settings() {
     <div>
       <PageTitle>Réglages</PageTitle>
       <IntervalsSection />
-      <Section title="Apparence">
-        <Link to="/design" className="btn-secondary w-full">
-          Choisir la piste visuelle
-        </Link>
-      </Section>
       <BackupSection />
       <StorageSection />
       <Section title="Avertissement">

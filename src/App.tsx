@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { db, getSetting, setSetting, SETTING } from './data/db'
 import { requestPersistence } from './data/storage'
-import { loadPiste } from './ui/theme'
 import { Layout } from './ui/Layout'
 import { DisclaimerGate } from './ui/components/Disclaimer'
 import { Today } from './ui/screens/Today'
 import { Settings } from './ui/screens/Settings'
 import { Diagnostic } from './ui/screens/Diagnostic'
-import { DesignPreview } from './ui/screens/DesignPreview'
 import { Placeholder } from './ui/screens/Placeholder'
 
 export default function App() {
@@ -18,7 +16,6 @@ export default function App() {
   useEffect(() => {
     ;(async () => {
       await db.open()
-      await loadPiste()
       setAccepted(!!(await getSetting(SETTING.disclaimerAcceptedAt)))
       const persisted = await requestPersistence()
       if (persisted !== undefined) await setSetting(SETTING.persistGranted, persisted)
@@ -60,7 +57,6 @@ export default function App() {
           />
           <Route path="/reglages" element={<Settings />} />
           <Route path="/diagnostic" element={<Diagnostic />} />
-          <Route path="/design" element={<DesignPreview />} />
           <Route path="*" element={<Navigate to="/aujourdhui" replace />} />
         </Route>
       </Routes>

@@ -3,91 +3,47 @@
 @tailwind utilities;
 
 /*
- * Design système : deux pistes, chacune avec un thème clair et sombre.
- * Le thème suit automatiquement le réglage de l'iPhone (prefers-color-scheme).
+ * Design système « Coach » : couleurs blanc + vert électrique (piste A),
+ * typo arrondie et titres sans majuscules (piste B).
+ * Le thème clair/sombre suit automatiquement le réglage de l'iPhone.
  * Valeurs RGB séparées par des espaces pour permettre l'opacité Tailwind.
+ *
+ * --accent      : vert électrique, pour les FONDS (boutons, sélection), texte foncé dessus.
+ * --accent-ink  : vert lisible pour le TEXTE et les jauges (foncé en clair, vif en sombre).
  */
 
-/* Piste A « Piste » : sombre par défaut, accent vert électrique, typo dense. */
-:root,
-[data-piste='a'] {
-  --bg: 245 246 243;
+:root {
+  --bg: 247 248 245;
   --surface: 255 255 255;
-  --surface2: 234 237 230;
-  --line: 214 218 208;
+  --surface2: 238 241 234;
+  --line: 218 222 212;
   --ink: 14 17 12;
   --muted: 82 90 76;
   --accent: 196 242 50;
   --on-accent: 14 17 12;
+  --accent-ink: 63 110 10;
   --ok: 22 128 61;
   --warn: 180 83 9;
   --danger: 190 18 60;
-  --radius-card: 14px;
-  --radius-btn: 12px;
-  --font-display: system-ui, -apple-system, 'SF Pro Display', sans-serif;
-  --font-body: system-ui, -apple-system, 'SF Pro Text', sans-serif;
-  --display-weight: 800;
-  --display-transform: uppercase;
-  --display-tracking: 0.02em;
-}
-
-/* Piste B « Matin » : clair et chaleureux, accent bleu profond, typo arrondie. */
-[data-piste='b'] {
-  --bg: 250 246 240;
-  --surface: 255 255 255;
-  --surface2: 242 235 225;
-  --line: 226 216 202;
-  --ink: 33 29 25;
-  --muted: 105 95 84;
-  --accent: 30 64 175;
-  --on-accent: 255 255 255;
-  --ok: 21 128 61;
-  --warn: 180 83 9;
-  --danger: 185 28 28;
-  --radius-card: 22px;
-  --radius-btn: 999px;
+  --radius-card: 20px;
+  --radius-btn: 16px;
   --font-display: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, sans-serif;
-  --font-body: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, sans-serif;
-  --display-weight: 700;
-  --display-transform: none;
-  --display-tracking: 0;
+  --font-body: system-ui, -apple-system, 'SF Pro Text', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']),
-  [data-piste='a']:not([data-theme='light']) {
+  :root {
     --bg: 11 13 16;
     --surface: 22 25 30;
     --surface2: 32 36 43;
     --line: 48 54 63;
     --ink: 240 243 236;
     --muted: 160 168 155;
+    --accent-ink: 196 242 50;
     --ok: 74 222 128;
     --warn: 251 191 36;
     --danger: 251 113 133;
   }
-  [data-piste='b']:not([data-theme='light']) {
-    --bg: 24 21 19;
-    --surface: 36 32 29;
-    --surface2: 48 43 38;
-    --line: 66 59 52;
-    --ink: 245 239 230;
-    --muted: 180 168 154;
-    --accent: 147 178 255;
-    --on-accent: 18 22 40;
-    --ok: 74 222 128;
-    --warn: 251 191 36;
-    --danger: 252 129 129;
-  }
-}
-[data-theme='dark'][data-piste='a'] {
-  --bg: 11 13 16; --surface: 22 25 30; --surface2: 32 36 43; --line: 48 54 63;
-  --ink: 240 243 236; --muted: 160 168 155; --ok: 74 222 128; --warn: 251 191 36; --danger: 251 113 133;
-}
-[data-theme='dark'][data-piste='b'] {
-  --bg: 24 21 19; --surface: 36 32 29; --surface2: 48 43 38; --line: 66 59 52;
-  --ink: 245 239 230; --muted: 180 168 154; --accent: 147 178 255; --on-accent: 18 22 40;
-  --ok: 74 222 128; --warn: 251 191 36; --danger: 252 129 129;
 }
 
 html,
@@ -106,9 +62,8 @@ body {
 @layer components {
   .display {
     font-family: var(--font-display);
-    font-weight: var(--display-weight);
-    text-transform: var(--display-transform);
-    letter-spacing: var(--display-tracking);
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
   .card {
     @apply bg-surface border border-line rounded-card p-4;

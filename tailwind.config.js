@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// Les couleurs viennent de variables CSS (src/index.css) : changer de piste
-// de design = changer d'attribut data-piste, sans toucher aux composants.
+// Les couleurs viennent de variables CSS (src/index.css), clair et sombre.
 const v = (name) => `rgb(var(--${name}) / <alpha-value>)`
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -15,6 +14,7 @@ export default {
         muted: v('muted'),
         accent: v('accent'),
         'on-accent': v('on-accent'),
+        'accent-ink': v('accent-ink'),
         ok: v('ok'),
         warn: v('warn'),
         danger: v('danger'),

@@ -58,7 +58,7 @@ export function Gauge({ label, value, target, unit }: { label: string; value: nu
         aria-valuemin={0}
         aria-valuemax={target}
       >
-        <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-accent-ink rounded-full" style={{ width: `${pct}%` }} />
       </div>
     </div>
   )

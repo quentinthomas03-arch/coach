@@ -38,9 +38,6 @@ export function Today() {
         <p className="text-sm text-muted mb-2">Le plan d'entraînement arrive en Phase 1. D'ici là, on valide la chaîne jusqu'à ta montre.</p>
         <ol className="divide-y divide-line">
           <Step done={isStandalone()}>Installer l'appli sur l'écran d'accueil (Partager › Sur l'écran d'accueil)</Step>
-          <Step done={!!get(SETTING.piste)} to="/design">
-            Choisir la piste visuelle
-          </Step>
           <Step done={connected} to="/reglages#intervals">
             Connecter Intervals.icu
           </Step>

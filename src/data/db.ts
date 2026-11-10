@@ -86,7 +86,6 @@ export const db = new CoachDB()
 export const SETTING = {
   intervalsAthleteId: 'intervals.athleteId',
   intervalsApiKey: 'intervals.apiKey',
-  piste: 'ui.piste',
   disclaimerAcceptedAt: 'disclaimer.acceptedAt',
   lastBackupAt: 'backup.lastAt',
   persistGranted: 'storage.persistGranted',

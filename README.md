@@ -81,8 +81,10 @@ Dans Coach : **Réglages** › **Diagnostic montre**. Lance les tests dans l'ord
 
 Une fois les tests faits, touche **Copier le rapport** et colle le résultat dans la conversation de développement.
 
-### Si le test CORS échoue : relais Cloudflare Worker
-Un mini relais gratuit transmettrait les appels à Intervals.icu. Il ne stocke rien : la clé reste sur ton téléphone. Les étapes pas à pas seront ajoutées ici seulement si le test échoue.
+### Résultats (voir `docs/DECISIONS.md`)
+- L'appel direct depuis l'iPhone fonctionne : **aucun relais n'est nécessaire**.
+- Les séances de **course** arrivent sur la montre avec leurs étapes.
+- Les séances de **renfo** ne sont pas exploitables sur la montre : elles se font dans l'appli (exercices et chrono à l'écran). Pour enregistrer la séance sur la montre, lance l'activité « Musculation ».
 
 ## 4. Sécurité de la clé d'API
 

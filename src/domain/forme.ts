@@ -19,7 +19,7 @@ export const QUALITY_SHARE = 0.25
 export const MIN_EASY_MIN = 25
 export const MAX_LONG_MIN = 120
 
-export type FormeKind = 'sortie-longue' | 'fractionne' | 'endurance'
+export type FormeKind = 'sortie-longue' | 'fractionne' | 'endurance' | 'seuil' | 'cotes' | 'test'
 
 export interface FormeSessionTemplate {
   kind: FormeKind

@@ -19,6 +19,7 @@ import { Suivi } from './ui/screens/Suivi'
 import { Nutrition } from './ui/screens/Nutrition'
 import { RoutinePlayer } from './ui/screens/RoutinePlayer'
 import { Notes } from './ui/screens/Notes'
+import { Bilan } from './ui/screens/Bilan'
 
 export default function App() {
   const [ready, setReady] = useState(false)
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/tabac" element={<Tabac />} />
           <Route path="/routine/:id" element={<RoutinePlayer />} />
           <Route path="/notes" element={<Notes />} />
+          <Route path="/bilan" element={<Bilan />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/suivi" element={<Suivi />} />
           <Route path="/reglages" element={<Settings />} />

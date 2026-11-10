@@ -141,4 +141,22 @@ describe('planWeek', () => {
     expect(a.map((s) => s.externalId)).toEqual(b.map((s) => s.externalId))
     expect(a.every((s) => s.workoutText && s.externalId.startsWith('coach-'))).toBe(true)
   })
+
+  it('forme continue : longue le dimanche, séance soutenue loin d’elle, renfo jamais la veille', () => {
+    const { sessions } = planWeek(input({ mode: 'forme', formeBaseMinutes: 160, weekIndex: 1, ranPreviousSunday: true }))
+    const long = sessions.find((s) => s.kind === 'sortie-longue')!
+    const q = sessions.find((s) => s.kind === 'fractionne')!
+    expect(weekdayIndex(long.date)).toBe(6)
+    expect(Math.abs(weekdayIndex(q.date) - 6)).toBeGreaterThan(1)
+    const keys = days(sessions, (s) => !!s.key)
+    for (const d of strengthDays(sessions)) expect(keys).not.toContain(d + 1)
+    const runMin = sessions.filter((s) => s.kind !== 'renfo').reduce((a, s) => a + s.durationMin, 0)
+    expect(Math.abs(runMin - 160)).toBeLessThanOrEqual(5)
+  })
+
+  it('forme continue : semaine allégée sans séance soutenue', () => {
+    const { sessions } = planWeek(input({ mode: 'forme', formeBaseMinutes: 160, weekIndex: 3 }))
+    expect(sessions.some((s) => s.kind === 'fractionne')).toBe(false)
+    expect(sessions.filter((s) => s.kind !== 'renfo').reduce((a, s) => a + s.durationMin, 0)).toBeLessThanOrEqual(125)
+  })
 })

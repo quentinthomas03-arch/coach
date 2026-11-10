@@ -2,21 +2,34 @@ import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { db, getSetting, setSetting, SETTING } from './data/db'
 import { requestPersistence } from './data/storage'
+import { KEYS } from './app/config'
+import { dailyRefresh } from './app/daily'
+import { todayISO } from './domain/dates'
 import { Layout } from './ui/Layout'
 import { DisclaimerGate } from './ui/components/Disclaimer'
 import { Today } from './ui/screens/Today'
 import { Settings } from './ui/screens/Settings'
 import { Diagnostic } from './ui/screens/Diagnostic'
 import { Placeholder } from './ui/screens/Placeholder'
+import { Onboarding } from './ui/screens/Onboarding'
+import { Week } from './ui/screens/Week'
+import { PlanScreen } from './ui/screens/PlanScreen'
+import { StrengthPlayer } from './ui/screens/StrengthPlayer'
+import { Tabac } from './ui/screens/Tabac'
 
 export default function App() {
   const [ready, setReady] = useState(false)
   const [accepted, setAccepted] = useState(false)
+  const [onboarded, setOnboarded] = useState(false)
 
   useEffect(() => {
     ;(async () => {
       await db.open()
       setAccepted(!!(await getSetting(SETTING.disclaimerAcceptedAt)))
+      const done = !!(await getSetting(KEYS.onboarded))
+      setOnboarded(done)
+      // Bilan, recalcul et envoi montre à chaque ouverture (sans bloquer l'affichage).
+      if (done) dailyRefresh(todayISO()).catch(() => undefined)
       const persisted = await requestPersistence()
       if (persisted !== undefined) await setSetting(SETTING.persistGranted, persisted)
       setReady(true)
@@ -34,19 +47,17 @@ export default function App() {
       />
     )
 
+  if (!onboarded) return <Onboarding onDone={() => setOnboarded(true)} />
+
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route element={<Layout />}>
           <Route path="/aujourdhui" element={<Today />} />
-          <Route
-            path="/semaine"
-            element={<Placeholder title="Semaine" phase="Phase 1" items={['Plan de la semaine', 'Tes disponibilités en 30 secondes', 'Ce qui a été recalculé et pourquoi']} />}
-          />
-          <Route
-            path="/plan"
-            element={<Placeholder title="Plan" phase="Phases 1 et 3" items={['Reprise puis Forme continue', 'Objectifs : route, chrono, trail, forme', 'Vue par phases jusqu’à l’échéance']} />}
-          />
+          <Route path="/semaine" element={<Week />} />
+          <Route path="/plan" element={<PlanScreen />} />
+          <Route path="/renfo/:id" element={<StrengthPlayer />} />
+          <Route path="/tabac" element={<Tabac />} />
           <Route
             path="/nutrition"
             element={<Placeholder title="Nutrition" phase="Phase 4" items={['Objectifs calories et macros du jour', 'Journal rapide, favoris, repas d’hier', 'Hydratation selon séance et météo']} />}

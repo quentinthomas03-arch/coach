@@ -68,6 +68,9 @@ export type SessionKind =
   | 'renfo'
   | 'repos'
 
+import type { Workout } from '../domain/workout'
+import type { StrengthSession } from '../domain/strength'
+
 export type SessionStatus = 'planned' | 'done' | 'missed' | 'moved' | 'skipped'
 export type SyncStatus = 'not-sent' | 'sent' | 'error' | 'outdated'
 
@@ -87,6 +90,14 @@ export interface PlannedSession {
   externalId: string
   sync: { status: SyncStatus; at?: ISODateTime; error?: string; intervalsEventId?: number }
   planVersionId?: number
+  /** Séance clé (sortie longue, qualité) : pas de renfo la veille. */
+  key?: boolean
+  /** Verrouillée par moi : le moteur ne la modifie et ne la déplace jamais. */
+  locked?: boolean
+  /** Qui a créé ou modifié la séance en dernier. */
+  origin?: 'moteur' | 'moi'
+  workout?: Workout
+  strength?: StrengthSession
 }
 
 export interface Activity {
@@ -112,7 +123,13 @@ export interface MorningCheckin {
   /** 1 (très chargé) à 5 (léger) */
   travail: number
   viePerso: number
+  /** intensite : 1 = gêne légère, 2 = douleur modérée, 3 = douleur forte */
   douleur?: { zone: string; intensite: number }
+  /** La veille au soir. */
+  sortie?: boolean
+  alcool?: 'aucun' | '1-2' | '3+'
+  /** Cigarettes fumées la veille (module tabac, facultatif). */
+  cigarettes?: number
   note?: string
   at: ISODateTime
 }
@@ -191,7 +208,8 @@ export interface PlanVersion {
   /** Séances avant le changement, pour pouvoir annuler. */
   before: PlannedSession[]
   after: PlannedSession[]
-  undone?: boolean
+  /** applied = en place ; pending = proposée, en attente de mon accord ; undone = annulée ; rejected = refusée. */
+  status: 'applied' | 'pending' | 'undone' | 'rejected'
 }
 
 export interface SyncLogEntry {

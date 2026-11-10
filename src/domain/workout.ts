@@ -117,3 +117,20 @@ export function estimateDurationSec(w: Workout, fallbackSecPerKm = 390): number 
   }
   return Math.round(total)
 }
+
+/**
+ * Version raccourcie d'une séance : le bloc principal est réduit d'un facteur
+ * (répétitions ou durée), échauffement et retour au calme inchangés.
+ */
+export function scaleWorkout(w: Workout, factor: number): Workout {
+  return {
+    blocks: w.blocks.map((b) => {
+      if (b.role !== 'main') return b
+      if (b.repeat && b.repeat > 1) return { ...b, repeat: Math.max(1, Math.round(b.repeat * factor)) }
+      return {
+        ...b,
+        steps: b.steps.map((s) => (s.durationSec ? { ...s, durationSec: Math.max(300, Math.round((s.durationSec * factor) / 60) * 60) } : s)),
+      }
+    }),
+  }
+}

@@ -1,0 +1,232 @@
+import type { DayAvailability, EquipmentId, ISODate, PlannedSession, SessionKind } from '../data/types'
+import { addDays, weekdayIndex } from './dates'
+import { getLevel, isDeloadWeek, repriseLabel, repriseWorkout } from './reprise'
+import { buildStrengthSession, strengthDescription } from './strength'
+import { estimateDurationSec, toIntervalsText, type Workout } from './workout'
+
+/**
+ * PLANIFICATEUR DE SEMAINE (mode Reprise, Phase 1).
+ *
+ * Règles, toutes explicables :
+ * 1. Les séances verrouillées par moi (ou déjà faites) sont gardées telles quelles.
+ * 2. Rien n'est planifié avant la date de début du plan, ni dans le passé.
+ * 3. La sortie longue va sur le jour préféré (dimanche par défaut) s'il est disponible.
+ * 4. Les autres sorties sont espacées au maximum (jamais deux jours d'affilée si possible).
+ * 5. Le renfo va de préférence un jour sans course, jamais la veille d'une séance clé.
+ * 6. Chaque séance tient dans le temps disponible du jour ; sinon elle est raccourcie (et on le dit).
+ */
+
+const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+export const MIN_RUN_MIN = 25
+export const MIN_STRENGTH_MIN = 15
+
+export interface WeekPlanInput {
+  /** Lundi de la semaine à planifier. */
+  weekStart: ISODate
+  /** Date de début du plan choisie par moi. */
+  planStart: ISODate
+  /** Aujourd'hui : on ne replanifie pas le passé. */
+  today: ISODate
+  /** Numéro de semaine depuis le début du plan (0 = première). */
+  weekIndex: number
+  availability: DayAvailability[]
+  runsPerWeek: number
+  strengthPerWeek: number
+  /** 0 = lundi … 6 = dimanche */
+  longRunWeekday: number
+  repriseLevel: number
+  strengthLevel: number
+  equipment: EquipmentId[]
+  /** Séances déjà présentes cette semaine : les verrouillées / faites / passées sont conservées. */
+  existing: PlannedSession[]
+  /** Vrai si j'ai couru le dimanche précédent : évite une sortie dès le lundi. */
+  ranPreviousSunday?: boolean
+}
+
+export interface WeekPlan {
+  sessions: PlannedSession[]
+  /** Remarques générales sur la semaine (affichées dans l'écran Semaine). */
+  notes: string[]
+}
+
+const isRun = (k: SessionKind) => k !== 'renfo' && k !== 'repos'
+
+/** Une séance existante est conservée telle quelle si verrouillée, faite, ou dans le passé. */
+export function isKept(s: PlannedSession, today: ISODate): boolean {
+  return !!s.locked || s.status === 'done' || s.date < today
+}
+
+export function sessionId(kind: 'course' | 'renfo', date: ISODate) {
+  return `${kind}-${date}`
+}
+
+function runSession(date: ISODate, workout: Workout, opts: { long: boolean; level: number; reasons: string[] }): PlannedSession {
+  const id = sessionId('course', date)
+  return {
+    id,
+    date,
+    kind: opts.long ? 'sortie-longue' : getLevel(opts.level).reps > 1 ? 'marche-course' : 'endurance',
+    title: opts.long ? 'Sortie longue tranquille' : getLevel(opts.level).reps > 1 ? 'Marche-course' : 'Endurance facile',
+    durationMin: Math.round(estimateDurationSec(workout) / 60),
+    workoutText: toIntervalsText(workout),
+    workout,
+    reasons: opts.reasons,
+    status: 'planned',
+    externalId: `coach-${id}`,
+    sync: { status: 'not-sent' },
+    key: opts.long,
+    origin: 'moteur',
+  }
+}
+
+/** Choisit `count` jours parmi `candidates` en maximisant l'écart avec `taken`. Déterministe. */
+export function spreadDays(candidates: number[], taken: number[], count: number): number[] {
+  const chosen: number[] = []
+  const pool = [...candidates]
+  while (chosen.length < count && pool.length) {
+    const all = [...taken, ...chosen]
+    let best = pool[0]
+    let bestScore = -Infinity
+    for (const d of pool) {
+      const gap = all.length ? Math.min(...all.map((x) => Math.abs(x - d))) : 7
+      // Écart d'abord ; à égalité, on préfère le jour le plus tôt.
+      const score = gap * 10 - d * 0.01
+      if (score > bestScore) {
+        bestScore = score
+        best = d
+      }
+    }
+    chosen.push(best)
+    pool.splice(pool.indexOf(best), 1)
+  }
+  return chosen.sort((a, b) => a - b)
+}
+
+export function planWeek(input: WeekPlanInput): WeekPlan {
+  const notes: string[] = []
+  const dates = Array.from({ length: 7 }, (_, i) => addDays(input.weekStart, i))
+  const avail = (wd: number) => input.availability.find((a) => a.weekday === wd)
+  const open = (wd: number) => dates[wd] >= input.planStart && dates[wd] >= input.today
+
+  const kept = input.existing.filter((s) => isKept(s, input.today))
+  const keptRunDays = kept.filter((s) => isRun(s.kind)).map((s) => weekdayIndex(s.date))
+  // Le dimanche précédent compte comme le « jour -1 » pour l'espacement.
+  const spacingRefs = input.ranPreviousSunday ? [-1] : []
+  const keptStrengthDays = kept.filter((s) => s.kind === 'renfo').map((s) => weekdayIndex(s.date))
+  const keptKeyDays = kept.filter((s) => s.key).map((s) => weekdayIndex(s.date))
+  const occupied = new Set(kept.map((s) => weekdayIndex(s.date)))
+
+  const deload = isDeloadWeek(input.weekIndex)
+  const level = deload ? Math.max(1, input.repriseLevel - 1) : input.repriseLevel
+  const weekLabel = `Semaine ${input.weekIndex + 1} du plan`
+  if (deload) notes.push('Semaine allégée : un cran plus doux en course et une série de moins en renfo, pour assimiler le travail des 3 dernières semaines.')
+
+  const usableFor = (minMin: number) =>
+    [0, 1, 2, 3, 4, 5, 6].filter((wd) => open(wd) && !occupied.has(wd) && (avail(wd)?.available ?? false) && (avail(wd)?.maxMinutes ?? 0) >= minMin)
+
+  // --- Course ---
+  const runsNeeded = Math.max(0, input.runsPerWeek - keptRunDays.length)
+  const runCandidates = usableFor(MIN_RUN_MIN)
+  const runDays: number[] = []
+  let longDay: number | undefined
+  const hasKeptLong = kept.some((s) => s.kind === 'sortie-longue')
+  if (runsNeeded > 0 && !hasKeptLong) {
+    if (runCandidates.includes(input.longRunWeekday)) longDay = input.longRunWeekday
+    else {
+      const weekend = runCandidates.filter((d) => d >= 5)
+      longDay = weekend.length ? weekend[weekend.length - 1] : runCandidates[runCandidates.length - 1]
+      if (longDay !== undefined && runCandidates.length)
+        notes.push(`Sortie longue placée le ${WEEKDAYS[longDay]} : le ${WEEKDAYS[input.longRunWeekday]} n'est pas disponible.`)
+    }
+    if (longDay !== undefined) runDays.push(longDay)
+  }
+  runDays.push(
+    ...spreadDays(
+      runCandidates.filter((d) => d !== longDay),
+      [...spacingRefs, ...keptRunDays, ...runDays],
+      runsNeeded - runDays.length,
+    ),
+  )
+  runDays.sort((a, b) => a - b)
+  if (runDays.length < runsNeeded) {
+    notes.push(`Pas assez de jours disponibles (≥ ${MIN_RUN_MIN} min) : ${runDays.length + keptRunDays.length} sortie(s) au lieu de ${input.runsPerWeek} cette semaine.`)
+  }
+  const consecutive = runDays.some((d) => runDays.includes(d + 1) || keptRunDays.includes(d + 1) || keptRunDays.includes(d - 1))
+  if (consecutive) notes.push('Deux sorties se suivent faute d’autres jours libres : la seconde reste très facile.')
+
+  const sessions: PlannedSession[] = [...kept]
+  for (const wd of runDays) {
+    const long = wd === longDay
+    const max = avail(wd)!.maxMinutes
+    const reasons = [`${weekLabel} · reprise niveau ${level}/9.`]
+    let lvl = level
+    let isLong = long
+    let w = repriseWorkout(lvl, isLong)
+    if (long) reasons.push(`Sortie longue du ${WEEKDAYS[wd]} : ${repriseLabel(lvl, true)}, toujours à allure de conversation.`)
+    else reasons.push(`${repriseLabel(lvl)}, à allure de conversation (zone 2).`)
+    if (deload) reasons.push('Semaine allégée.')
+    // Ajustement au temps disponible.
+    while (estimateDurationSec(w) / 60 > max) {
+      if (isLong) {
+        isLong = false
+      } else if (lvl > 1) {
+        lvl -= 1
+      } else break
+      w = repriseWorkout(lvl, isLong)
+    }
+    if (lvl !== level || isLong !== long) reasons.push(`Raccourcie pour tenir dans tes ${max} min disponibles.`)
+    sessions.push(runSession(dates[wd], w, { long, level: lvl, reasons }))
+  }
+
+  // --- Renfo ---
+  const allRunDays = [...keptRunDays, ...runDays]
+  const keyDays = [...keptKeyDays, ...(longDay !== undefined ? [longDay] : [])]
+  const notBeforeKey = (d: number) => !keyDays.includes(d + 1)
+  const strengthNeeded = Math.max(0, input.strengthPerWeek - keptStrengthDays.length)
+  const sCandidates = usableFor(MIN_STRENGTH_MIN).filter(notBeforeKey)
+  const restDays = sCandidates.filter((d) => !allRunDays.includes(d))
+  const sDays = spreadDays(restDays, keptStrengthDays, strengthNeeded)
+  if (sDays.length < strengthNeeded) {
+    // Repli : le même jour qu'une sortie facile (renfo après la course), si le temps
+    // disponible suffit pour les deux. Jamais un jour de séance clé ni la veille.
+    const runMinOn = (d: number) => sessions.find((s) => s.date === dates[d] && isRun(s.kind))?.durationMin ?? 0
+    const sameDayCandidates = runDays.filter(
+      (d) => !keyDays.includes(d) && notBeforeKey(d) && (avail(d)?.maxMinutes ?? 0) - runMinOn(d) >= MIN_STRENGTH_MIN,
+    )
+    const extra = spreadDays(sameDayCandidates, [...keptStrengthDays, ...sDays], strengthNeeded - sDays.length)
+    sDays.push(...extra)
+    sDays.sort((a, b) => a - b)
+    if (extra.length) notes.push('Pas assez de jours sans course : un renfo est placé après une sortie facile, le même jour.')
+  }
+  if (sDays.length < strengthNeeded) notes.push(`Renfo : ${sDays.length + keptStrengthDays.length} séance(s) au lieu de ${input.strengthPerWeek} (manque de créneaux).`)
+
+  sDays.forEach((wd, n) => {
+    const template = (input.weekIndex * input.strengthPerWeek + keptStrengthDays.length + n) % 2 === 0 ? 'A' : 'B'
+    const runSameDay = allRunDays.includes(wd)
+    const runMin = runSameDay ? (sessions.find((s) => s.date === dates[wd] && isRun(s.kind))?.durationMin ?? 0) : 0
+    const maxMinutes = Math.min(20, (avail(wd)?.maxMinutes ?? 20) - runMin)
+    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes })
+    const id = sessionId('renfo', dates[wd])
+    const reasons = [`Renfo ${template} niveau ${st.level}/5 : gainage, fessiers, mollets et stabilité pour courir sans se blesser.`]
+    reasons.push(runSameDay ? 'Placé après ta sortie facile du jour (pas d’autre créneau libre).' : 'Placé un jour sans course.')
+    if (keyDays.length) reasons.push('Jamais la veille de la sortie longue, pour arriver frais.')
+    if (deload) reasons.push('Semaine allégée : une série de moins.')
+    sessions.push({
+      id,
+      date: dates[wd],
+      kind: 'renfo',
+      title: `Renfo ${template}`,
+      durationMin: st.durationMin,
+      workoutText: strengthDescription(st),
+      strength: st,
+      reasons,
+      status: 'planned',
+      externalId: `coach-${id}`,
+      sync: { status: 'not-sent' },
+      origin: 'moteur',
+    })
+  })
+
+  sessions.sort((a, b) => (a.date === b.date ? (isRun(a.kind) ? -1 : 1) : a.date < b.date ? -1 : 1))
+  return { sessions, notes }
+}

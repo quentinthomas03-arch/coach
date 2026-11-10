@@ -1,51 +1,275 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { Link } from 'react-router-dom'
-import { db, SETTING } from '../../data/db'
-import { isStandalone } from '../../data/storage'
+import { useState } from 'react'
+import { useDbQuery } from '../useDbQuery'
+import { Link, useNavigate } from 'react-router-dom'
+import type { MorningCheckin, PlannedSession } from '../../data/types'
+import { db } from '../../data/db'
+import { dismissProposal, loadToday, type TodayView } from '../../app/daily'
+import { applyProposal, markDone, markMissed } from '../../app/plan'
+import { syncToWatch } from '../../app/sync'
 import { formatLongFr, todayISO } from '../../domain/dates'
-import { PageTitle } from '../Layout'
+import type { CoachMessage } from '../../domain/coach'
+import { Scale5 } from '../components/Segmented'
+import { Choice } from '../components/Choice'
+import { LockTag, StatusTag, WatchBadge, sessionSummary } from '../components/SessionBits'
 
-function Step({ done, children, to }: { done: boolean; children: React.ReactNode; to?: string }) {
-  const content = (
-    <div className="flex items-center gap-3 min-h-[52px]">
-      <span
-        aria-hidden
-        className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${
-          done ? 'bg-ok text-white' : 'border-2 border-line'
-        }`}
-      >
-        {done ? '✓' : ''}
-      </span>
-      <span className={done ? 'text-muted line-through' : ''}>{children}</span>
-      {to && !done && <span className="ml-auto text-muted">›</span>}
-    </div>
-  )
-  return <li>{to && !done ? <Link to={to}>{content}</Link> : content}</li>
+const ZONES = ['Genou', 'Mollet', 'Tendon d’Achille', 'Cheville', 'Hanche', 'Dos', 'Pied', 'Autre']
+
+function greeting() {
+  const h = new Date().getHours()
+  return h < 12 ? 'Bonjour' : h < 18 ? 'Salut' : 'Bonsoir'
 }
 
-/** Phase 0 : l'écran Aujourd'hui sert de check-list de mise en route. */
-export function Today() {
-  const settings = useLiveQuery(() => db.settings.toArray(), [])
-  const get = (k: string) => settings?.find((s) => s.key === k)?.value
-  const lastTest = useLiveQuery(() => db.syncLog.where('action').equals('upsert-test-course').last(), [])
-  const connected = !!get(SETTING.intervalsAthleteId) && !!get(SETTING.intervalsApiKey)
-
+function Messages({ list }: { list: CoachMessage[] }) {
+  if (!list.length) return null
+  const style = {
+    alerte: 'border-danger/40 bg-danger/10',
+    recadrage: 'border-warn/40 bg-warn/10',
+    bravo: 'border-ok/40 bg-ok/10',
+    info: 'border-line bg-surface',
+  }
   return (
-    <div>
-      <PageTitle sub={formatLongFr(todayISO())}>Aujourd'hui</PageTitle>
-      <section className="card">
-        <h2 className="display text-base mb-1">Mise en route (Phase 0)</h2>
-        <p className="text-sm text-muted mb-2">Le plan d'entraînement arrive en Phase 1. D'ici là, on valide la chaîne jusqu'à ta montre.</p>
-        <ol className="divide-y divide-line">
-          <Step done={isStandalone()}>Installer l'appli sur l'écran d'accueil (Partager › Sur l'écran d'accueil)</Step>
-          <Step done={connected} to="/reglages#intervals">
-            Connecter Intervals.icu
-          </Step>
-          <Step done={!!lastTest?.ok} to="/diagnostic">
-            Envoyer la séance test sur la montre
-          </Step>
-        </ol>
-      </section>
+    <section aria-label="Le coach" className="space-y-2">
+      {list.map((m) => (
+        <p key={m.rule} className={`rounded-card border px-4 py-3 text-[15px] leading-snug ${style[m.kind]}`}>
+          <span className="sr-only">{m.kind} : </span>
+          {m.text}
+        </p>
+      ))}
+    </section>
+  )
+}
+
+function CheckinCard({ today, initial, tabacPrep }: { today: string; initial?: MorningCheckin; tabacPrep: boolean }) {
+  const [c, setC] = useState<Partial<MorningCheckin>>(initial ?? {})
+  const [pain, setPain] = useState(!!initial?.douleur)
+  const [open, setOpen] = useState(!initial)
+  const ready = c.physique && c.moral && c.travail && c.viePerso && (!pain || (c.douleur?.zone && c.douleur.intensite))
+  const save = async () => {
+    await db.checkins.put({ ...(c as MorningCheckin), douleur: pain ? c.douleur : undefined, date: today, at: new Date().toISOString() })
+    setOpen(false)
+  }
+  if (!open)
+    return (
+      <button className="btn-secondary w-full" onClick={() => setOpen(true)}>
+        Modifier mon check du matin
+      </button>
+    )
+  return (
+    <section className="card space-y-3" aria-label="Check du matin">
+      <h2 className="display text-lg">Check du matin</h2>
+      <Scale5 label="Forme physique" value={c.physique} onChange={(v) => setC({ ...c, physique: v })} low="épuisé" high="au top" />
+      <Scale5 label="Moral" value={c.moral} onChange={(v) => setC({ ...c, moral: v })} low="bas" high="excellent" />
+      <Scale5 label="Charge de travail" value={c.travail} onChange={(v) => setC({ ...c, travail: v })} low="débordé" high="léger" />
+      <Scale5 label="Vie perso" value={c.viePerso} onChange={(v) => setC({ ...c, viePerso: v })} low="tendu" high="serein" />
+      <Choice
+        label="Hier soir"
+        cols={3}
+        value={c.alcool ?? 'aucun'}
+        onChange={(v) => setC({ ...c, alcool: v, sortie: v !== 'aucun' || c.sortie })}
+        options={[
+          { value: 'aucun', label: 'Pas d’alcool' },
+          { value: '1-2', label: '1-2 verres' },
+          { value: '3+', label: '3 et +' },
+        ]}
+      />
+      {tabacPrep && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Cigarettes hier</span>
+          <input type="number" inputMode="numeric" min={0} className="field w-24 text-center" value={c.cigarettes ?? ''} onChange={(e) => setC({ ...c, cigarettes: e.target.value === '' ? undefined : Number(e.target.value) })} />
+        </div>
+      )}
+      <Choice cols={2} value={pain ? 'oui' : 'non'} onChange={(v) => setPain(v === 'oui')} label="Une douleur ?" options={[{ value: 'non', label: 'Non' }, { value: 'oui', label: 'Oui' }]} />
+      {pain && (
+        <>
+          <Choice cols={2} value={c.douleur?.zone} onChange={(zone) => setC({ ...c, douleur: { intensite: c.douleur?.intensite ?? 1, zone } })} options={ZONES.map((z) => ({ value: z, label: z }))} />
+          <Choice
+            cols={3}
+            value={c.douleur?.intensite}
+            onChange={(intensite) => setC({ ...c, douleur: { zone: c.douleur?.zone ?? 'Autre', intensite } })}
+            options={[
+              { value: 1, label: 'Gêne' },
+              { value: 2, label: 'Douleur' },
+              { value: 3, label: 'Forte' },
+            ]}
+          />
+        </>
+      )}
+      <button className="btn-primary w-full" disabled={!ready} onClick={save}>
+        Valider
+      </button>
+    </section>
+  )
+}
+
+function RpePicker({ onPick, onCancel }: { onPick: (n: number) => void; onCancel: () => void }) {
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-medium mb-2">C’était dur comment ? (1 = très facile, 10 = à bloc)</p>
+      <div className="grid grid-cols-5 gap-1.5">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+          <button key={n} className="h-11 rounded-btn bg-surface2 border border-line num font-semibold" onClick={() => onPick(n)}>
+            {n}
+          </button>
+        ))}
+      </div>
+      <button className="text-sm text-muted mt-2 min-h-[44px]" onClick={onCancel}>
+        Annuler
+      </button>
+    </div>
+  )
+}
+
+function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
+  const [rpe, setRpe] = useState(false)
+  const nav = useNavigate()
+  const proposal = view.proposals.find((p) => p.session.id === s.id)
+  return (
+    <section className="card" aria-label={`Séance : ${s.title}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          {s.kind === 'renfo' ? 'Renfo' : s.kind === 'repos' ? 'Repos' : 'Course'} · {s.durationMin} min
+        </p>
+        <WatchBadge s={s} />
+      </div>
+      <h2 className="display text-2xl leading-tight mt-1">{s.title}</h2>
+      <p className="num text-lg font-semibold mt-2">{sessionSummary(s)}</p>
+      <div className="flex gap-3 mt-1">
+        <StatusTag s={s} />
+        <LockTag s={s} />
+      </div>
+      <details className="mt-2">
+        <summary className="text-sm font-semibold min-h-[44px] flex items-center">Pourquoi cette séance ?</summary>
+        <ul className="text-sm text-muted space-y-1 list-disc pl-5">
+          {s.reasons.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      </details>
+
+      {proposal && (
+        <div className="mt-3 rounded-card border border-warn/40 bg-warn/10 p-3">
+          <p className="text-sm">
+            <strong>Le coach propose :</strong> {proposal.why}
+          </p>
+          {proposal.change === 'allegee' && <p className="text-sm mt-1">→ {sessionSummary(proposal.session)} ({proposal.session.durationMin} min)</p>}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button className="btn-secondary" onClick={() => dismissProposal(view.today, s.id)}>
+              Je garde ma séance
+            </button>
+            <button
+              className="btn-primary"
+              onClick={async () => {
+                await applyProposal(proposal.session, 'Forme du jour')
+                syncToWatch(view.today)
+              }}
+            >
+              D’accord
+            </button>
+          </div>
+        </div>
+      )}
+
+      {s.status === 'planned' && s.kind !== 'repos' && !rpe && (
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          {s.kind === 'renfo' ? (
+            <button className="btn-primary col-span-2" onClick={() => nav(`/renfo/${s.id}`)}>
+              Commencer le renfo
+            </button>
+          ) : (
+            <button className="btn-primary col-span-2" onClick={() => setRpe(true)}>
+              C’est fait
+            </button>
+          )}
+          {s.kind === 'renfo' && (
+            <button className="btn-secondary" onClick={() => setRpe(true)}>
+              Déjà faite
+            </button>
+          )}
+          <button className={`btn-secondary ${s.kind === 'renfo' ? '' : 'col-span-2'}`} onClick={() => markMissed(s.id, view.today).then(() => syncToWatch(view.today))}>
+            Pas faite
+          </button>
+        </div>
+      )}
+      {rpe && (
+        <RpePicker
+          onCancel={() => setRpe(false)}
+          onPick={async (n) => {
+            await markDone(s.id, n)
+            setRpe(false)
+          }}
+        />
+      )}
+    </section>
+  )
+}
+
+function ReadinessBadge({ view }: { view: TodayView }) {
+  const r = view.readiness
+  if (!r) return null
+  const c = { vert: 'bg-ok', orange: 'bg-warn', rouge: 'bg-danger' }[r.color]
+  return (
+    <section className="card flex items-start gap-3" aria-label="Forme du jour">
+      <span className={`mt-1 w-3.5 h-3.5 rounded-full shrink-0 ${c}`} aria-hidden />
+      <div>
+        <p className="font-semibold">
+          Forme du jour : {r.color} <span className="num text-muted font-normal">({r.score}/100)</span>
+        </p>
+        <p className="text-sm text-muted">{r.reasons.join(' ')}</p>
+      </div>
+    </section>
+  )
+}
+
+function TabacCard({ view }: { view: TodayView }) {
+  const t = view.tabac
+  if (!t) return null
+  return (
+    <Link to="/tabac" className="card block">
+      <p className="text-sm text-muted">Arrêt du tabac</p>
+      {t.phase === 'preparation' ? (
+        <p className="display text-xl">J−{t.daysUntilQuit}</p>
+      ) : (
+        <p className="display text-xl">
+          {t.daysSmokeFree} jour{(t.daysSmokeFree ?? 0) > 1 ? 's' : ''} sans tabac · <span className="num">{Math.round(t.moneySaved ?? 0)} €</span>
+        </p>
+      )}
+      <p className="text-sm text-muted mt-1">Voir le détail et le bouton SOS envie ›</p>
+    </Link>
+  )
+}
+
+export function Today() {
+  const today = todayISO()
+  const view = useDbQuery(() => loadToday(today), [today])
+  if (!view) return null
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-muted text-sm first-letter:uppercase">{formatLongFr(today)}</p>
+        <h1 className="display text-3xl leading-tight">{greeting()}</h1>
+      </div>
+      <Messages list={view.messages} />
+      {!view.checkin ? <CheckinCard today={today} tabacPrep={view.tabac?.phase === 'preparation'} /> : <ReadinessBadge view={view} />}
+      {view.todaySessions.length ? (
+        view.todaySessions.map((s) => <SessionCard key={s.id} s={s} view={view} />)
+      ) : (
+        <section className="card">
+          <h2 className="display text-xl">Repos aujourd’hui</h2>
+          <p className="text-muted text-sm mt-1">Récupérer fait partie de l’entraînement. Une marche tranquille est toujours une bonne idée.</p>
+        </section>
+      )}
+      {view.checkin && <CheckinCard key={view.checkin.at} today={today} initial={view.checkin} tabacPrep={view.tabac?.phase === 'preparation'} />}
+      {view.tomorrow.length > 0 && (
+        <section className="card">
+          <p className="text-sm text-muted">Demain</p>
+          {view.tomorrow.map((s) => (
+            <p key={s.id} className="font-semibold">
+              {s.title} · {s.durationMin} min
+            </p>
+          ))}
+        </section>
+      )}
+      <TabacCard view={view} />
     </div>
   )
 }

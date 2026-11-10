@@ -208,7 +208,8 @@ export interface PlanVersion {
   /** Séances avant le changement, pour pouvoir annuler. */
   before: PlannedSession[]
   after: PlannedSession[]
-  undone?: boolean
+  /** applied = en place ; pending = proposée, en attente de mon accord ; undone = annulée ; rejected = refusée. */
+  status: 'applied' | 'pending' | 'undone' | 'rejected'
 }
 
 export interface SyncLogEntry {

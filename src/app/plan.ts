@@ -7,6 +7,7 @@ import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
+import { goalWeek } from './goals'
 
 /**
  * Service du plan : relie le moteur (fonctions pures) aux données du téléphone.
@@ -98,6 +99,8 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       ? after.filter((s) => s.date === sundayDate)
       : await database.sessions.where('date').equals(sundayDate).toArray()
     const { days } = await getAvailability(weekStart, database)
+    const gw = await goalWeek(weekStart, today, cfg, database)
+    if (gw) notes.push(`Objectif : semaine ${gw.weekIndex + 1}/${gw.total}, phase ${gw.phase}.`)
     const plan = planWeek({
       weekStart,
       planStart: cfg.startDate,
@@ -112,8 +115,10 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       equipment,
       existing,
       ranPreviousSunday: prevSunday.some((s) => isRunSession(s) && s.status !== 'skipped'),
-      mode: cfg.mode ?? 'reprise',
+      mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
       formeBaseMinutes: cfg.formeBaseMinutes,
+      goalTemplates: gw?.templates,
+      raceDate: gw ? (await getSetting<{ date: ISODate }>(KEYS.goal, database))?.date : undefined,
     })
     before.push(...existing)
     after.push(...plan.sessions.map((s) => mergeSync(s, existing.find((e) => e.id === s.id))))

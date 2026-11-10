@@ -54,6 +54,17 @@ export function phasesFor(n: number, taper: number): Phase[] {
   ]
 }
 
+/** Semaines allégées du plan (1 sur 4 hors affûtage et semaine de course). */
+export function deloadFlags(phases: Phase[]): boolean[] {
+  let k = 0
+  return phases.map((ph) => {
+    if (ph === 'affutage' || ph === 'course') return false
+    const d = k > 0 && k % 4 === 3
+    k++
+    return d
+  })
+}
+
 /** Volume de course (min) de chaque semaine du plan. */
 export function weeklyMinutesPlan(phases: Phase[], startMin: number, peak: number): number[] {
   const out: number[] = []

@@ -31,6 +31,8 @@ export const KEYS = {
   pendingDeletes: 'sync.pendingDeletes',
   lastDecisions: 'plan.lastDecisions',
   dismissedProposal: 'proposal.dismissed',
+  goal: 'goal.current',
+  perfs: 'perf.list',
 } as const
 
 export const DEFAULT_TEMPLATE: DayAvailability[] = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({

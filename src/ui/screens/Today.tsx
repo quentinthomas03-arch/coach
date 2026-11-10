@@ -73,8 +73,10 @@ function CheckinCard({ today, initial, tabacPrep }: { today: string; initial?: M
       </button>
     )
   return (
-    <section className="card space-y-3" aria-label="Check du matin">
-      <h2 className="display text-lg">Check du matin</h2>
+    <section className="card tint tint-course space-y-3" aria-label="Check du matin">
+      <h2 className="display text-lg flex items-center gap-2">
+        <span className="chip" aria-hidden>☀️</span> Check du matin
+      </h2>
       <Scale5 label="Forme physique" value={c.physique} onChange={(v) => setC({ ...c, physique: v })} low="épuisé" high="au top" />
       <Scale5 label="Moral" value={c.moral} onChange={(v) => setC({ ...c, moral: v })} low="bas" high="excellent" />
       <Scale5 label="Charge de travail" value={c.travail} onChange={(v) => setC({ ...c, travail: v })} low="débordé" high="léger" />
@@ -154,9 +156,10 @@ function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
   const nav = useNavigate()
   const proposal = view.proposals.find((p) => p.session.id === s.id)
   return (
-    <section className="card" aria-label={`Séance : ${s.title}`}>
+    <section className={`card tint ${s.kind === 'renfo' ? 'tint-renfo' : s.kind === 'repos' ? 'tint-sommeil' : 'tint-course'}`} aria-label={`Séance : ${s.title}`}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted">
+        <p className="text-sm font-medium flex items-center gap-2">
+          <span className="chip" aria-hidden>{s.kind === 'renfo' ? '💪' : s.kind === 'repos' ? '😴' : '🏃'}</span>
           {s.kind === 'renfo' ? 'Renfo' : s.kind === 'repos' ? 'Repos' : 'Course'} · {s.durationMin} min
         </p>
         <WatchBadge s={s} />
@@ -248,7 +251,7 @@ function ReadinessBadge({ view }: { view: TodayView }) {
   if (!r) return null
   const c = { vert: 'bg-ok', orange: 'bg-warn', rouge: 'bg-danger' }[r.color]
   return (
-    <section className="card flex items-start gap-3" aria-label="Forme du jour">
+    <section className="card tint tint-course flex items-start gap-3" aria-label="Forme du jour">
       <span className={`mt-1 w-3.5 h-3.5 rounded-full shrink-0 ${c}`} aria-hidden />
       <div>
         <p className="font-semibold">
@@ -264,8 +267,10 @@ function TabacCard({ view }: { view: TodayView }) {
   const t = view.tabac
   if (!t) return null
   return (
-    <Link to="/tabac" className="card block">
-      <p className="text-sm text-muted">Arrêt du tabac</p>
+    <Link to="/tabac" className="card tint tint-tabac block">
+      <p className="text-sm font-medium flex items-center gap-2">
+        <span className="chip" aria-hidden>🚭</span> Arrêt du tabac
+      </p>
       {t.phase === 'preparation' ? (
         <p className="display text-xl">J−{t.daysUntilQuit}</p>
       ) : (
@@ -284,7 +289,7 @@ function SundayCard() {
   const hour = new Date().getHours()
   if (!(wd === 0 || (wd === 6 && hour >= 17))) return null
   return (
-    <section className="card space-y-2" aria-label="Préparer la semaine">
+    <section className="card tint tint-course space-y-2" aria-label="Préparer la semaine">
       <h2 className="display text-lg">Bilan et semaine à venir</h2>
       <p className="text-sm text-muted">Lis le bilan du coach, puis 30 secondes pour tes dispos, le menu et les courses.</p>
       <Link to="/bilan" className="btn-primary w-full">
@@ -307,15 +312,17 @@ function NutritionCard({ today }: { today: string }) {
   const d = useResults(() => nutritionDay(today), [today])
   if (!d || !d.targets) return null
   return (
-    <section className="card space-y-3" aria-label="Nutrition et eau">
-      <Link to="/nutrition" className="flex items-baseline justify-between">
-        <h2 className="display text-lg">Nutrition</h2>
+    <section className="card tint tint-nutri space-y-3" aria-label="Nutrition et eau">
+      <Link to="/nutrition" className="flex items-center justify-between">
+        <h2 className="display text-lg flex items-center gap-2">
+          <span className="chip" aria-hidden>🍽️</span> Nutrition
+        </h2>
         <span className="num font-semibold">
           {d.eaten.kcal} <span className="text-sm text-muted font-normal">/ {d.targets.kcal} kcal ›</span>
         </span>
       </Link>
-      <Gauge label="Protéines" value={d.eaten.protein} target={d.targets.protein} unit="g" />
-      <Gauge label="Eau" value={Math.round(d.waterMl / 10) / 100} target={Math.round(d.hydration.ml / 10) / 100} unit="L" />
+      <Gauge label="Protéines" value={d.eaten.protein} target={d.targets.protein} unit="g" color="nutri" />
+      <Gauge label="Eau 💧" value={Math.round(d.waterMl / 10) / 100} target={Math.round(d.hydration.ml / 10) / 100} unit="L" color="eau" />
       <WaterButtons date={today} bottleMl={d.bottleMl} />
       {d.waterSource === 'montre' && <p className="text-xs text-muted">Eau enregistrée sur ta montre.</p>}
       {d.tips && <p className="text-sm text-muted">{d.tips.avant[0]}</p>}
@@ -363,10 +370,17 @@ export function Today() {
   if (!view) return null
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-muted text-sm first-letter:uppercase">{formatLongFr(today)}</p>
+      <header className="hero rounded-card border border-line px-4 py-5">
+        <p className="text-sm font-medium first-letter:uppercase">{formatLongFr(today)}</p>
         <h1 className="display text-3xl leading-tight">{greeting()}</h1>
-      </div>
+        {view.readiness ? (
+          <p className="mt-1 font-semibold">
+            Forme du jour : <span className={{ vert: 'text-ok', orange: 'text-warn', rouge: 'text-danger' }[view.readiness.color]}>{view.readiness.color}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm">Ton check du matin en 15 secondes, et le coach s’occupe du reste.</p>
+        )}
+      </header>
       {view.pause && (
         <Link to="/plan" className="block rounded-card border border-warn/40 bg-warn/10 px-4 py-3">
           <strong>Plan en pause</strong> ({view.pause.reason}). Repose-toi bien. Touche ici pour reprendre quand tu es prêt.
@@ -392,8 +406,10 @@ export function Today() {
       {view.todaySessions.length ? (
         view.todaySessions.map((s) => <SessionCard key={s.id} s={s} view={view} />)
       ) : (
-        <section className="card">
-          <h2 className="display text-xl">Repos aujourd’hui</h2>
+        <section className="card tint tint-sommeil">
+          <h2 className="display text-xl flex items-center gap-2">
+            <span className="chip" aria-hidden>🌿</span> Repos aujourd’hui
+          </h2>
           <p className="text-muted text-sm mt-1">Récupérer fait partie de l’entraînement. Une marche tranquille est toujours une bonne idée.</p>
         </section>
       )}
@@ -409,8 +425,10 @@ export function Today() {
         </section>
       )}
       {view.bedtimeTonight && new Date().getHours() >= 15 && (
-        <section className="card" aria-label="Sommeil">
-          <p className="text-sm text-muted">Ce soir</p>
+        <section className="card tint tint-sommeil" aria-label="Sommeil">
+          <p className="text-sm font-medium flex items-center gap-2">
+            <span className="chip" aria-hidden>🌙</span> Ce soir
+          </p>
           <p className="font-semibold">
             Au lit vers <span className="num">{view.bedtimeTonight.time}</span> ({view.bedtimeTonight.why}).
           </p>

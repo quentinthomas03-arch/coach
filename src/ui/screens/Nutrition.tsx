@@ -87,7 +87,7 @@ function Journal() {
         <section className="card">Renseigne ta taille et ton poids dans Réglages › Nutrition pour calculer tes objectifs.</section>
       ) : (
         t && (
-          <section className="card space-y-3" aria-label="Objectifs du jour">
+          <section className="card tint tint-nutri space-y-3" aria-label="Objectifs du jour">
             <div className="flex items-baseline justify-between">
               <h2 className="display text-lg">Objectifs du jour</h2>
               <span className="num text-2xl font-bold">
@@ -95,9 +95,9 @@ function Journal() {
                 <span className="text-sm text-muted font-normal"> / {t.kcal} kcal</span>
               </span>
             </div>
-            <Gauge label="Protéines" value={day.eaten.protein} target={t.protein} unit="g" />
-            <Gauge label="Glucides" value={day.eaten.carbs} target={t.carbs} unit="g" />
-            <Gauge label="Lipides" value={day.eaten.fat} target={t.fat} unit="g" />
+            <Gauge label="Protéines" value={day.eaten.protein} target={t.protein} unit="g" color="nutri" />
+            <Gauge label="Glucides" value={day.eaten.carbs} target={t.carbs} unit="g" color="nutri" />
+            <Gauge label="Lipides" value={day.eaten.fat} target={t.fat} unit="g" color="nutri" />
             <details className="text-sm text-muted">
               <summary className="min-h-[44px] flex items-center font-medium text-ink">Comment c’est calculé</summary>
               <p>
@@ -112,14 +112,14 @@ function Journal() {
         )
       )}
 
-      <section className="card space-y-3" aria-label="Hydratation">
+      <section className="card tint tint-eau space-y-3" aria-label="Hydratation">
         <div className="flex items-baseline justify-between">
           <h2 className="display text-lg">Eau</h2>
           <span className="num font-semibold">
             {L(day.waterMl)} / {L(day.hydration.ml)}
           </span>
         </div>
-        <Gauge label="Hydratation" value={Math.round(day.waterMl / 10) / 100} target={Math.round(day.hydration.ml / 10) / 100} unit="L" />
+        <Gauge label="Hydratation" value={Math.round(day.waterMl / 10) / 100} target={Math.round(day.hydration.ml / 10) / 100} unit="L" color="eau" />
         {date === today && <WaterButtons date={date} bottleMl={day.bottleMl} />}
         {day.waterSource === 'check' && <p className="text-xs text-muted">Estimation de ton check du matin.</p>}
         {day.waterSource === 'montre' && <p className="text-xs text-muted">Eau enregistrée sur ta montre (Garmin).</p>}

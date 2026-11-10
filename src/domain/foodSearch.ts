@@ -32,9 +32,10 @@ export function searchFoods(query: string, foods: FoodItem[], limit = 30): FoodI
     // (sauf si je tape « cru »).
     const wantsRaw = tokens.some((t) => t.startsWith('cru'))
     const cooked = /\b(cuit|cuite|cuits|cuites|grille|grillee|poele|poelee|roti|rotie|bouilli|bouillie|vapeur)\b/.test(n)
-    const raw = /\b(cru|crue|crus|crues)\b/.test(n)
-    const cookable = /^(Viandes|Poissons|Pâtes|Pommes de terre|Légumineuses)/.test(f.group ?? '') || /\b(poulet|boeuf|porc|dinde|veau|agneau|steak|filet)\b/.test(n)
-    if (cookable && !wantsRaw) score += cooked ? 60 : raw ? -40 : 0
+    const raw = /\b(cru|crue|crus|crues|a cuire)\b/.test(n)
+    // Pour fruits, légumes, crudités, laitages, fromages… le cru est normal : pas de préférence.
+    const rawIsNormal = /^(Fruits|Légumes|Salades|Fromages|Laits|Produits laitiers|Huiles|Herbes|Épices|Eaux|Boissons)/.test(f.group ?? '')
+    if (!rawIsNormal && !wantsRaw) score += cooked ? 60 : raw ? -60 : 0
     else if (raw || cooked) score += 20
     if (/\b(aliment moyen)\b/.test(n)) score += 40
     score -= n.length * 0.5

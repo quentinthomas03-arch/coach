@@ -17,7 +17,7 @@ Coach d'entraînement personnel sur iPhone : course à pied, renforcement muscul
 | **Aujourd’hui** | Check du matin (4 taps : forme, moral, travail, vie perso, plus la soirée et une douleur éventuelle) → forme du jour vert/orange/rouge. Séance du jour avec « Pourquoi ? », état sur la montre et proposition d’allègement (tu acceptes ou tu gardes ta séance). Séance détectée par la montre → « c’était dur comment ? ». Messages du coach, nutrition et eau en 1 tap, tabac. Le dimanche : « Prépare ta semaine ». |
 | **Semaine** | Le plan de la semaine et de la suivante. Tu déplaces, verrouilles, retires ou ajoutes une séance. Tes dispos de la semaine en quelques taps. « Ce qui a changé » avec **Annuler** sur chaque changement. En mode « je valide », les propositions du coach à accepter ou refuser. |
 | **Plan** | Mode actuel (Reprise → Forme continue → Objectif). Fixer un objectif : le coach fait d’abord son **bilan** (où tu en es, temps nécessaire, réaliste ou non, date au plus tôt). Ma forme (VDOT) et mes allures, mes performances, le test de calibration de 30 min. |
-| **Nutrition** | Journal (objectifs du jour, eau, repères autour de la séance, repas), Menu de la semaine, Courses (liste par rayon, partageable), Panier du maraîcher (légumes de saison → idées de recettes). |
+| **Nutrition** | Journal (objectifs du jour, eau, repères autour de la séance, repas). Ajout d’un repas en le **décrivant** (« colin pané, écrasé de pommes de terre, fondue de poireaux »), en portions petite/normale/grosse, **sans peser**. Menu de la semaine (55 recettes) qui suit tes séances et se met à jour avec ton panier du maraîcher. |
 | **Suivi** | Minutes et km par semaine, charge et garde-fous, régularité du renfo, sommeil et FC de repos, poids. |
 | **Réglages** | Plan (date de début, sorties, niveaux, ton du coach, mode des changements, matériel), Nutrition (profil, objectif de poids encadré, aliments évités, météo), Intervals.icu, sauvegarde, stockage, avertissement. |
 
@@ -143,7 +143,8 @@ Une fois les tests faits, touche **Copier le rapport** et colle le résultat dan
   - protéines ~1,6 g/kg, lipides ≥ 25 % des calories, glucides pour le reste ;
   - eau : ~30 ml/kg par jour, plus la séance, plus la chaleur.
 - **Garde-fous de poids** : déficit ≤ 15 % et ≤ 500 kcal/jour. L’objectif calorique ne descend jamais sous le métabolisme de base ni sous 1 500 kcal (homme) / 1 200 kcal (femme). Le rythme est limité à 0,75 % du poids par semaine. Pour un objectif important, l’appli recommande un avis médical ou diététique.
-- **Menu, courses, panier** : 34 recettes simples, avec valeurs calculées depuis Ciqual et calendrier des fruits et légumes de saison en France. Le menu suit les séances : féculents la veille d’une sortie longue, protéines après une séance. Il utilise d’abord ton panier du maraîcher. La liste de courses se partage via le menu iOS.
+- **Menu et panier** : 55 recettes (rapides, à cuisiner en avance, plats plaisir), valeurs calculées depuis Ciqual, calendrier des fruits et légumes de saison en France. Le menu suit les séances (féculents la veille d’une sortie longue, protéines après une séance) et se recalcule quand tu modifies ton panier du maraîcher.
+- **Saisie sans pesée** : portions « normales » d’adulte par type d’aliment (1 filet, 1 assiette, 1 pot…), petite ×0,7, grosse ×1,4. Plats du quotidien et du resto : ceux de Ciqual (burger, pizza, kebab, couscous, paella…) et quelques plats composés à partir d’ingrédients Ciqual (tacos, poke bowl, ramen, pad thaï…), marqués « estimé ».
 
 ## 7. Déploiement (GitHub Pages)
 

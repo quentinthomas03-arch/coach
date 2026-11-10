@@ -25,6 +25,19 @@
   --ok: 21 108 50;
   --warn: 150 68 8;
   --danger: 190 18 60;
+  /* Couleurs des univers (pour les fonds teintés et les pastilles ; le texte reste en encre). */
+  --c-course: 101 163 13;
+  --c-renfo: 124 58 237;
+  --c-nutri: 234 88 12;
+  --c-eau: 2 132 199;
+  --c-tabac: 219 39 119;
+  --c-sommeil: 79 70 229;
+  /* Échelle 1 → 5 du check du matin (du rouge au vert), fonds clairs lisibles avec texte foncé. */
+  --s1: 251 113 133;
+  --s2: 251 146 60;
+  --s3: 250 204 21;
+  --s4: 163 230 53;
+  --s5: 74 222 128;
   --radius-card: 20px;
   --radius-btn: 16px;
   --font-display: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, sans-serif;
@@ -40,6 +53,12 @@
     --ink: 240 243 236;
     --muted: 160 168 155;
     --accent-ink: 196 242 50;
+    --c-course: 163 230 53;
+    --c-renfo: 167 139 250;
+    --c-nutri: 251 146 60;
+    --c-eau: 56 189 248;
+    --c-tabac: 244 114 182;
+    --c-sommeil: 129 140 248;
     --ok: 74 222 128;
     --warn: 251 191 36;
     --danger: 251 113 133;
@@ -67,6 +86,26 @@ body {
   }
   .card {
     @apply bg-surface border border-line rounded-card p-4;
+  }
+  /* Carte teintée d'un univers : fond léger + liseré coloré à gauche. */
+  .tint {
+    background: linear-gradient(135deg, rgb(var(--tint) / 0.14), rgb(var(--tint) / 0.04) 60%), rgb(var(--surface));
+    border-color: rgb(var(--tint) / 0.35);
+    box-shadow: inset 4px 0 0 rgb(var(--tint));
+  }
+  .tint-course { --tint: var(--c-course); }
+  .tint-renfo { --tint: var(--c-renfo); }
+  .tint-nutri { --tint: var(--c-nutri); }
+  .tint-eau { --tint: var(--c-eau); }
+  .tint-tabac { --tint: var(--c-tabac); }
+  .tint-sommeil { --tint: var(--c-sommeil); }
+  .chip {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-full text-lg shrink-0;
+    background: rgb(var(--tint) / 0.18);
+  }
+  .hero {
+    background: radial-gradient(120% 140% at 0% 0%, rgb(var(--accent) / 0.85), transparent 60%),
+      radial-gradient(120% 140% at 100% 100%, rgb(var(--c-eau) / 0.35), transparent 60%), rgb(var(--surface));
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 min-h-[52px] px-5 rounded-btn font-semibold text-base

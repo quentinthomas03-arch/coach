@@ -16,7 +16,7 @@ describe('décris ton repas', () => {
   })
   it('l’exemple du colin d’Alaska', () => {
     const r = best("colin d'Alaska pané, écrasé de pommes de terre et fondue de poireaux")
-    expect(r[0]).toMatch(/^Poisson pané/)
+    expect(r[0]).toBe('Poisson pané, frit')
     expect(r[1]).toMatch(/^Purée de pomme de terre/)
     expect(r[2]).toMatch(/^Fondue de poireau/)
   })

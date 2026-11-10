@@ -38,7 +38,7 @@ export function Layout() {
               <NavLink
                 to={to}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center gap-0.5 h-16 text-[11px] font-medium ${isActive ? 'text-ink' : 'text-muted'}`
+                  `flex flex-col items-center justify-center gap-0.5 h-16 text-xs font-medium ${isActive ? 'text-ink' : 'text-muted'}`
                 }
               >
                 {({ isActive }) => (

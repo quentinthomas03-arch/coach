@@ -165,20 +165,24 @@ export interface ShoppingItem {
 
 export const RAYON_ORDER: Rayon[] = ['Fruits et légumes', 'Boucherie / poissonnerie', 'Crèmerie', 'Boulangerie', 'Épicerie']
 
-/** Agrège les ingrédients du menu (un plat en avance compte toutes ses portions une fois). */
-export function shoppingList(menu: MenuDay[], recipes: Recipe[], basket: BasketItem[], includePantry = false): ShoppingItem[] {
+/**
+ * Agrège les ingrédients du menu (un plat en avance compte toutes ses portions une fois).
+ * `from` : ignore les jours déjà passés. Les féculents sont en poids sec (à acheter).
+ */
+export function shoppingList(menu: MenuDay[], recipes: Recipe[], basket: BasketItem[], includePantry = false, from?: ISODate): ShoppingItem[] {
   const map = new Map<string, ShoppingItem>()
+  menu = from ? menu.filter((d) => d.date >= from) : menu
   const add = (i: Ingredient, mult: number) => {
     if (i.pantry && !includePantry) return
     const key = `${i.code}`
     const cur = map.get(key)
-    const grams = i.g * mult
+    const grams = i.g * mult * (i.buy?.factor ?? 1)
     if (cur) cur.grams += grams
-    else map.set(key, { key, name: i.name, grams, rayon: i.rayon, inBasket: !!i.produce && basket.some((b) => b.produce === i.produce) })
+    else map.set(key, { key, name: i.buy?.name ?? i.name, grams, rayon: i.rayon, inBasket: !!i.produce && basket.some((b) => b.produce === i.produce) })
   }
   for (const d of menu) {
     for (const m of [d.lunch, d.dinner]) {
-      if (m.leftover) continue
+      if (m.leftover) continue // déjà compté le jour où le plat est cuisiné
       const r = recipes.find((x) => x.id === m.recipeId)
       if (!r) continue
       for (const i of r.ingredients) add(i, r.portions)

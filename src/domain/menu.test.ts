@@ -72,6 +72,16 @@ describe('courses et panier', () => {
     expect(txt).toMatch(/^Liste de courses/)
     expect(txt).not.toMatch(/Poireaux/)
   })
+  it('féculents en poids sec, jours passés ignorés', () => {
+    const list = shoppingList(menu, RECIPES, [])
+    expect(list.some((i) => /poids cuit/.test(i.name))).toBe(false)
+    const later = shoppingList(menu, RECIPES, [], false, '2026-11-20')
+    expect(later.reduce((a, i) => a + i.grams, 0)).toBeLessThan(list.reduce((a, i) => a + i.grams, 0))
+  })
+  it('en novembre, pas de tomates fraîches au menu', () => {
+    const used = menu.flatMap((d) => [d.lunch, d.dinner]).map((x) => recipeById(x.recipeId)!)
+    expect(used.some((r) => r.ingredients.some((i) => i.produce === 'tomate'))).toBe(false)
+  })
   it('idées pour mes légumes, fragiles d’abord', () => {
     const ideas = basketIdeas([{ produce: 'epinard', addedAt: '' }, { produce: 'carotte', addedAt: '' }], RECIPES, [])
     expect(ideas.length).toBeGreaterThan(0)

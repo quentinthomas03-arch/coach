@@ -19,6 +19,8 @@ export interface Ingredient {
   produce?: string
   /** Placard (huile, épices…) : pas ajouté automatiquement à la liste de courses. */
   pantry?: boolean
+  /** Pour la liste de courses : nom et facteur d'achat (ex. pâtes : poids cuit → poids sec). */
+  buy?: { name: string; factor: number }
 }
 
 export interface Recipe {
@@ -40,15 +42,15 @@ const BO: Rayon = 'Boulangerie'
 
 // Ingrédients courants (codes Ciqual 2025)
 const I = {
-  pates: (g = 90): Ingredient => ({ name: 'Pâtes (poids cuit)', code: 9811, g: g * 2.4, rayon: EP }),
-  pates_cplt: (g = 90): Ingredient => ({ name: 'Pâtes complètes (poids cuit)', code: 9871, g: g * 2.4, rayon: EP }),
-  riz: (g = 75): Ingredient => ({ name: 'Riz (poids cuit)', code: 9104, g: g * 2.6, rayon: EP }),
-  riz_cplt: (g = 75): Ingredient => ({ name: 'Riz complet (poids cuit)', code: 9103, g: g * 2.5, rayon: EP }),
-  quinoa: (g = 70): Ingredient => ({ name: 'Quinoa (poids cuit)', code: 9341, g: g * 2.7, rayon: EP }),
-  semoule: (g = 70): Ingredient => ({ name: 'Semoule (poids cuit)', code: 9683, g: g * 2.5, rayon: EP }),
+  pates: (g = 90): Ingredient => ({ name: 'Pâtes (poids cuit)', code: 9811, g: g * 2.4, rayon: EP, buy: { name: 'Pâtes', factor: 1 / 2.4 } }),
+  pates_cplt: (g = 90): Ingredient => ({ name: 'Pâtes complètes (poids cuit)', code: 9871, g: g * 2.4, rayon: EP, buy: { name: 'Pâtes complètes', factor: 1 / 2.4 } }),
+  riz: (g = 75): Ingredient => ({ name: 'Riz (poids cuit)', code: 9104, g: g * 2.6, rayon: EP, buy: { name: 'Riz', factor: 1 / 2.6 } }),
+  riz_cplt: (g = 75): Ingredient => ({ name: 'Riz complet (poids cuit)', code: 9103, g: g * 2.5, rayon: EP, buy: { name: 'Riz complet', factor: 1 / 2.5 } }),
+  quinoa: (g = 70): Ingredient => ({ name: 'Quinoa (poids cuit)', code: 9341, g: g * 2.7, rayon: EP, buy: { name: 'Quinoa', factor: 1 / 2.7 } }),
+  semoule: (g = 70): Ingredient => ({ name: 'Semoule (poids cuit)', code: 9683, g: g * 2.5, rayon: EP, buy: { name: 'Semoule', factor: 1 / 2.5 } }),
   pdt: (g = 250): Ingredient => ({ name: 'Pommes de terre', code: 4048, g, rayon: FL, produce: 'pomme-de-terre' }),
-  lentilles: (g = 200): Ingredient => ({ name: 'Lentilles vertes (poids cuit)', code: 20587, g, rayon: EP }),
-  corail: (g = 180): Ingredient => ({ name: 'Lentilles corail (poids cuit)', code: 20589, g, rayon: EP }),
+  lentilles: (g = 200): Ingredient => ({ name: 'Lentilles vertes (poids cuit)', code: 20587, g, rayon: EP, buy: { name: 'Lentilles vertes', factor: 1 / 2.5 } }),
+  corail: (g = 180): Ingredient => ({ name: 'Lentilles corail (poids cuit)', code: 20589, g, rayon: EP, buy: { name: 'Lentilles corail', factor: 1 / 2.5 } }),
   pois_chiches: (g = 150): Ingredient => ({ name: 'Pois chiches (boîte, égouttés)', code: 20532, g, rayon: EP }),
   haricots_rouges: (g = 150): Ingredient => ({ name: 'Haricots rouges (boîte, égouttés)', code: 20524, g, rayon: EP }),
   poulet: (g = 130): Ingredient => ({ name: 'Filet de poulet', code: 36018, g, rayon: BP }),
@@ -161,6 +163,11 @@ export const RECIPES: Recipe[] = [
   R('poelee-bruxelles', 'Poêlée de choux de Bruxelles, pommes de terre et dinde', 30, ['proteines'], [I.bruxelles(), I.pdt(200), I.dinde(120), I.huile(10)], ['Blanchir les choux 8 min.', 'Poêler avec les pommes de terre en dés 12 min.', 'Ajouter la dinde en lanières 6 min.']),
   R('salade-recup', 'Bol récup : quinoa, poulet, légumes croquants et yaourt', 15, ['proteines', 'rapide'], [I.quinoa(70), I.poulet(120), I.carotte(80), I.radis(60), I.yaourt_grec(60), I.citron(10)], ['Cuire le quinoa (ou le prendre en avance).', 'Ajouter poulet émincé, carottes râpées, radis.', 'Sauce yaourt-citron.']),
   R('celeri-puree-porc', 'Purée céleri-pommes de terre et filet mignon', 30, ['proteines'], [I.celeri(), I.pdt(150), I.porc(), I.lait(60), I.huile(5)], ['Cuire céleri et pommes de terre 20 min, écraser avec le lait.', 'Saisir le filet mignon en médaillons 8 min.']),
+  // --- Hiver ---
+  R('salade-endives-chevre', 'Salade d’endives, pomme et chèvre chaud', 15, ['rapide', 'vegetarien', 'leger'], [I.endive(150), I.pomme(100), I.chevre(50), I.pain(80), I.huile(10), I.miel(5)], ['Émincer endives et pomme.', 'Toaster le pain avec le chèvre et un filet de miel.', 'Vinaigrette légère.']),
+  R('veloute-carotte-corail', 'Velouté carottes-lentilles corail (×3)', 30, ['batch', 'vegetarien', 'proteines'], [I.carotte(200), I.corail(120), I.oignon(30), I.bouillon(250), I.pain(70), I.emmental(20)], ['Faire revenir l’oignon, ajouter carottes et lentilles sèches avec le bouillon.', 'Cuire 20 min, mixer.', 'Tartines gratinées à côté. Se garde 3 jours.'], 3),
+  R('poelee-panais-poulet', 'Poêlée de panais et carottes au poulet, semoule', 25, ['proteines', 'feculents'], [I.panais(150), I.carotte(100), I.poulet(120), I.semoule(60), I.huile(10)], ['Couper panais et carottes en bâtonnets, poêler 15 min.', 'Ajouter le poulet en morceaux 8 min.', 'Servir avec la semoule.']),
+  R('pates-butternut', 'Pâtes à la crème de butternut et jambon', 25, ['feculents', 'rapide'], [I.pates(100), I.butternut(200), I.creme(30), I.jambon(60), I.parmesan(10)], ['Cuire la butternut en dés 15 min, mixer avec la crème.', 'Cuire les pâtes, mélanger avec la sauce et le jambon en lanières.', 'Parmesan.']),
   // --- Desserts / collations ---
   R('yaourt-fruits', 'Yaourt grec, fruit de saison et miel', 3, ['rapide', 'vegetarien', 'petit-dej'], [I.yaourt_grec(150), I.poire(), I.miel(8)], ['Couper le fruit, ajouter au yaourt, filet de miel.']),
 ]

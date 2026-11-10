@@ -107,6 +107,19 @@ Une fois les tests faits, touche **Copier le rapport** et colle le résultat dan
 - Coach demande le « stockage persistant » au navigateur (Réglages › Stockage indique s'il est accordé).
 - **Pas de notifications push** (il faudrait un serveur). Les rappels passent par l'écran Aujourd'hui et par la montre.
 
+## 6 bis. Nutrition : sources et limites
+
+- **Aliments bruts** : table **Ciqual 2025 de l’Anses** (3 484 aliments), intégrée à l’appli et utilisable hors ligne. Licence Ouverte (Etalab). Source : ciqual.anses.fr. Le fichier `public/data/ciqual.json` est généré par `scripts/build-ciqual.mjs`.
+- **Produits de marque** : **Open Food Facts** (base collaborative, gratuite). Seul le code-barres ou le texte recherché est envoyé.
+- **Scan de code-barres** : Safari sur iPhone n’a pas de lecteur intégré. L’appli embarque la bibliothèque zxing (WebAssembly), qui fonctionne hors ligne. La lecture est fiable sur un emballage plat et bien éclairé, moins sur un emballage courbe ou froissé. **Alternative toujours disponible** : taper les chiffres du code dans la recherche.
+- **Météo** (eau du jour) : **Open-Meteo**, gratuit et sans clé. Seule ta position arrondie (~1 km) est envoyée, une fois par jour. La météo peut être désactivée dans Réglages › Nutrition.
+- **Calculs** (repères généraux, pas des prescriptions) :
+  - métabolisme de base selon Mifflin-St Jeor, multiplié par ton niveau d’activité, plus la dépense des séances ;
+  - protéines ~1,6 g/kg, lipides ≥ 25 % des calories, glucides pour le reste ;
+  - eau : ~30 ml/kg par jour, plus la séance, plus la chaleur.
+- **Garde-fous de poids** : déficit ≤ 15 % et ≤ 500 kcal/jour. L’objectif calorique ne descend jamais sous le métabolisme de base ni sous 1 500 kcal (homme) / 1 200 kcal (femme). Le rythme est limité à 0,75 % du poids par semaine. Pour un objectif important, l’appli recommande un avis médical ou diététique.
+- **Menu, courses, panier** : 34 recettes simples, avec valeurs calculées depuis Ciqual et calendrier des fruits et légumes de saison en France. Le menu suit les séances : féculents la veille d’une sortie longue, protéines après une séance. Il utilise d’abord ton panier du maraîcher. La liste de courses se partage via le menu iOS.
+
 ## 7. Déploiement (GitHub Pages)
 
 Chaque modification poussée sur la branche `main` est testée puis mise en ligne automatiquement par GitHub Actions (`.github/workflows/deploy.yml`). Si un test échoue, rien n'est déployé.

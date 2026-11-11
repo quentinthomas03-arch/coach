@@ -118,6 +118,8 @@ export interface Activity {
   name?: string
   /** Calories brutes mesurées par la montre. */
   calories?: number
+  /** Cadence moyenne (pas par minute). */
+  cadence?: number
   /** Tours enregistrés par la montre (un par étape d'une séance structurée). */
   laps?: { durationSec: number; distanceM?: number; pace?: number; avgHr?: number; type?: string; label?: string }[]
   raw?: unknown
@@ -168,6 +170,8 @@ export interface Wellness {
   weightKg?: number
   /** Eau enregistrée sur la montre / Garmin Connect (ml), si transmise par Intervals.icu. */
   hydrationMl?: number
+  /** VO2max estimée par la montre (Garmin), si transmise. */
+  vo2max?: number
   raw?: unknown
 }
 

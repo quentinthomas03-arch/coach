@@ -22,6 +22,7 @@ import type { CoachMessage } from '../../domain/coach'
 import { Scale5 } from '../components/Segmented'
 import { Choice } from '../components/Choice'
 import { WeatherCard } from '../components/WeatherCard'
+import { newRecords } from '../../domain/progress'
 import { LockTag, StatusTag, WatchBadge, WorkoutSteps, sessionSummary } from '../components/SessionBits'
 
 const ZONES = ['Genou', 'Mollet', 'Tendon d’Achille', 'Cheville', 'Hanche', 'Dos', 'Pied', 'Autre']
@@ -474,6 +475,7 @@ export function Today() {
       <Messages list={view.messages} today={today} />
       {!view.pause && <WeatherCard today={today} />}
       <RaceSoon today={today} />
+      <NewRecords today={today} />
       <Results today={today} />
       {view.awaitingRpe.map((a) => (
         <section key={a.id} className="card" aria-label="Séance détectée">
@@ -540,6 +542,24 @@ function RaceSoon({ today }: { today: string }) {
     <Link to="/plan#jour-j" className="card tint tint-course block">
       <p className="font-semibold">🏁 {n === 0 ? 'C’est le jour J !' : n === 1 ? 'Course demain' : `Course dans ${n} jours`} : {goal.name ?? 'ton objectif'}</p>
       <p className="text-sm text-muted">Allures, repas, échauffement et sac de la veille : ton plan de course est prêt.</p>
+    </Link>
+  )
+}
+
+/** Record battu ces 3 derniers jours : le coach félicite. */
+function NewRecords({ today }: { today: string }) {
+  const recs = useDbQuery(async () => newRecords(await db.activities.toArray(), addDays(today, -2), today), [today])
+  if (!recs?.length) return null
+  return (
+    <Link to="/suivi" className="card tint tint-course block">
+      <p className="font-semibold">🏆 Nouveau record !</p>
+      <ul className="text-[15px]">
+        {recs.map((r) => (
+          <li key={r.id}>
+            {r.label} : <b className="num">{r.value}</b>
+          </li>
+        ))}
+      </ul>
     </Link>
   )
 }

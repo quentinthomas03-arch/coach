@@ -31,7 +31,14 @@ export function mapActivity(raw: Record<string, unknown>): Activity | undefined 
     rpe: rpe != null && rpe >= 1 && rpe <= 10 ? rpe : undefined,
     name: str(raw.name),
     calories: num(raw.calories),
+    cadence: cadenceSpm(num(raw.average_cadence)),
   }
+}
+
+/** Cadence en pas par minute (certaines sources la donnent par jambe : on double). */
+function cadenceSpm(v?: number): number | undefined {
+  if (v == null || v <= 0) return undefined
+  return Math.round(v < 120 ? v * 2 : v)
 }
 
 /** Intervals.icu peut donner l'eau en litres ou en ml selon la source : on normalise en ml. */
@@ -53,6 +60,7 @@ export function mapWellness(raw: Record<string, unknown>): Wellness | undefined 
     weightKg: num(raw.weight),
     bodyBattery: num(raw.bodyBattery),
     hydrationMl: hydrationMl(num(raw.hydrationVolume)),
+    vo2max: num(raw.vo2max),
   }
 }
 

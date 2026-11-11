@@ -86,5 +86,5 @@ export function weeklyReview(i: WeeklyReviewInput): WeeklyReview {
 }
 
 export function reviewText(r: WeeklyReview): string {
-  return [r.title, '', ...r.facts.map((x) => `• ${x}`), '', 'Le coach :', ...r.coach.map((x) => `• ${x}`), '', 'Semaine prochaine :', ...r.nextWeek.map((x) => `• ${x}`)].join('\n')
+  return [r.title, '', ...r.facts.map((x) => `• ${x}`), '', 'Le coach :', ...r.coach.map((x) => `• ${x}`), ...(r.nextWeek.length ? ['', 'Semaine prochaine :', ...r.nextWeek.map((x) => `• ${x}`)] : [])].join('\n')
 }

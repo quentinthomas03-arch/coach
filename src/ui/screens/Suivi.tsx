@@ -6,6 +6,7 @@ import { fitnessSeries, STATUS_TEXT, trainingStatus } from '../../domain/fitness
 import { BarChart, LineChart, StatTile } from '../components/Charts'
 import { useDbQuery } from '../useDbQuery'
 import { PageTitle } from '../Layout'
+import { ProgressSections } from '../components/ProgressSections'
 
 const WEEKS = 8
 const shortDate = (d: string) => {
@@ -138,12 +139,14 @@ export function Suivi() {
 
       <div className="grid grid-cols-2 gap-2">
         <a href="#/bilan" className="btn-secondary">
-          Bilan de la semaine
+          Bilans semaine et mois
         </a>
         <a href="#/notes" className="btn-secondary">
           Mes notes
         </a>
       </div>
+
+      <ProgressSections />
 
       <section className="space-y-2" aria-label="Poids">
         <h2 className="display text-lg">Poids</h2>

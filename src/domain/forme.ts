@@ -1,4 +1,5 @@
 import type { Workout } from './workout'
+import { controlWorkout } from './cycle'
 
 /**
  * MODE FORME CONTINUE (après la reprise, sans objectif).
@@ -19,7 +20,7 @@ export const QUALITY_SHARE = 0.25
 export const MIN_EASY_MIN = 25
 export const MAX_LONG_MIN = 120
 
-export type FormeKind = 'sortie-longue' | 'fractionne' | 'endurance' | 'seuil' | 'cotes' | 'test'
+export type FormeKind = 'sortie-longue' | 'fractionne' | 'endurance' | 'seuil' | 'cotes' | 'test' | 'controle'
 
 export interface FormeSessionTemplate {
   kind: FormeKind
@@ -109,6 +110,13 @@ export function formeWeek(totalMinutes: number, runs: number, weekIndex: number)
     remainingRuns -= 1
   }
   for (let i = 0; i < remainingRuns; i++) {
+    // Fin de cycle (semaine allégée) : la première endurance devient le contrôle aérobie.
+    if (deload && i === 0) {
+      const w = controlWorkout()
+      out.push({ kind: 'controle', title: 'Contrôle aérobie', minutes: 35, workout: w, key: false, reason: 'Fin de cycle : 20 min régulières à FC zone 2. À fréquence cardiaque égale, ton allure dira si ton endurance progresse.' })
+      rest -= 35
+      continue
+    }
     const m = Math.max(MIN_EASY_MIN, Math.round(rest / (remainingRuns - i)))
     rest -= m
     out.push({

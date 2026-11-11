@@ -2,6 +2,7 @@ import type { FitnessEstimate } from './fitness'
 import { formatPace, type Target, type Workout } from './workout'
 import { trainingPaces } from './paces'
 import { STRETCH_LABEL, WARMUP_LABEL } from './routines'
+import { CONTROL_LABEL } from './cycle'
 
 /**
  * ALLURES DE CHAQUE ÉTAPE (comme Kiprun) : échauffement, course, récupération, retour au calme,
@@ -54,7 +55,7 @@ export function applyPaces(w: Workout, sp: SessionPaces | undefined): Workout {
     blocks: w.blocks.map((b) => ({
       ...b,
       steps: b.steps.map((s) => {
-        if (s.label === WARMUP_LABEL || s.label === STRETCH_LABEL) return s
+        if (s.label === WARMUP_LABEL || s.label === STRETCH_LABEL || s.label === CONTROL_LABEL) return s
         if (s.target?.kind === 'pace') return s
         if (isWalk(s.label)) return { ...s, target: pace(sp.walk) }
         if (s.target?.kind !== 'hrZone' && s.target?.kind !== 'paceZone') return s

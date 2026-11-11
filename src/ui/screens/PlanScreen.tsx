@@ -8,6 +8,7 @@ import { syncToWatch } from '../../app/sync'
 import { addDays, formatLongFr, mondayOf, todayISO } from '../../domain/dates'
 import { estimateFitness, predictionHistory } from '../../domain/fitness'
 import { LineChart } from '../components/Charts'
+import { getCycleReviews } from '../../app/cycle'
 import { goalLabel, type Goal, type GoalAssessment, type GoalType } from '../../domain/goals'
 import { PHASE_LABEL, peakMinutesFor, phasesFor, taperWeeksFor, totalWeeks, type Phase } from '../../domain/goalPlan'
 import { DISTANCE_LABEL, DISTANCES, formatTime, parseTime, predictTimeSec, trainingPaces, type RoadDistance } from '../../domain/paces'
@@ -258,6 +259,45 @@ function PauseCard({ paused, from, today }: { paused: boolean; from?: string; to
   )
 }
 
+function CycleReviews() {
+  const reviews = useDbQuery(() => getCycleReviews(), [])
+  if (!reviews?.length)
+    return (
+      <section className="card">
+        <h2 className="display text-lg">Bilans de cycle</h2>
+        <p className="text-sm text-muted mt-1">Toutes les 4 semaines, le coach fait le bilan du cycle. En fin de cycle, un contrôle aérobie (20 min à FC zone 2) mesure tes progrès d’endurance.</p>
+      </section>
+    )
+  const sorted = [...reviews].sort((a, b) => (a.start < b.start ? 1 : -1))
+  const label = { reussi: '✅ Réussi', correct: '🟡 Correct', difficile: '🟠 Difficile' }
+  return (
+    <section className="card space-y-3" id="cycles">
+      <h2 className="display text-lg">Bilans de cycle</h2>
+      {sorted.map((r, i) => (
+        <details key={r.start} open={i === 0} className="border-t border-line pt-2">
+          <summary className="font-semibold min-h-[40px] flex items-center justify-between gap-2">
+            <span className="first-letter:uppercase">
+              {formatLongFr(r.start).split(' ').slice(1, 3).join(' ')} → {formatLongFr(r.end).split(' ').slice(1, 3).join(' ')}
+            </span>
+            <span className="text-sm">{label[r.verdict]}</span>
+          </summary>
+          <ul className="list-disc pl-5 text-[15px] space-y-1">
+            {r.facts.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="font-semibold mt-2">Le coach :</p>
+          <ul className="text-[15px] space-y-1">
+            {r.coach.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </section>
+  )
+}
+
 export function PlanScreen() {
   const today = todayISO()
   const [creating, setCreating] = useState(false)
@@ -445,6 +485,8 @@ export function PlanScreen() {
           </button>
         )}
       </section>
+
+      <CycleReviews />
 
       <PauseCard paused={!!cfg.pause && cfg.pause.from <= today} from={cfg.pause?.from} today={today} />
 

@@ -18,7 +18,7 @@ import { RUN_TYPES } from './activities'
 export const ACWR_ALERT = 1.5
 export const VOLUME_JUMP_ALERT = 0.15
 const DEFAULT_RPE: Record<string, number> = {
-  'marche-course': 3, endurance: 3, recuperation: 2, 'sortie-longue': 4, fractionne: 6, seuil: 6, cotes: 6, test: 8, renfo: 5,
+  'marche-course': 3, endurance: 3, controle: 3, recuperation: 2, 'sortie-longue': 4, fractionne: 6, seuil: 6, cotes: 6, test: 8, renfo: 5,
 }
 
 export interface LoadEntry {

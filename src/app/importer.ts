@@ -8,6 +8,7 @@ import { getSetting, setSetting } from '../data/db'
 import { detectEfforts, estimateFitness, hrMaxOf, RECENT_DAYS, type Performance } from '../domain/fitness'
 import { KEYS } from './config'
 import { parseLaps } from '../domain/laps'
+import { efficiencyFrom, type EfficiencyPoint } from '../domain/cycle'
 
 /**
  * Import depuis Intervals.icu (sens Garmin → appli) :
@@ -56,6 +57,7 @@ export async function importFromIntervals(today: ISODate, database: CoachDB = db
     })
     await updateAutoPerformances(today, database)
     await fetchRecentLaps(today, client, database).catch(() => undefined)
+    await recordControls(today, database)
     const message = `${fresh.length} activité(s), ${wellness.length} jour(s) de bien-être, ${matchedCount} séance(s) reconnue(s).`
     if (matchedCount) await logSync('import', true, message)
     return { ok: true, activities: fresh.length, wellnessDays: wellness.length, matched: matchedCount, message }
@@ -116,4 +118,23 @@ export async function fetchRecentLaps(today: ISODate, client: IntervalsClient, d
     const laps = parseLaps(await client.activityIntervals(a.id))
     await database.activities.update(a.id, { laps })
   }
+}
+
+export const EFFICIENCY_KEY = 'efficiency.points'
+
+/** Contrôles aérobies faits : mesure (allure à FC zone 2) enregistrée une fois par contrôle. */
+export async function recordControls(today: ISODate, database: CoachDB = db) {
+  const pts = (await getSetting<EfficiencyPoint[]>(EFFICIENCY_KEY, database)) ?? []
+  const acts = await database.activities.where('date').between(addDays(today, -7), today, true, true).filter((a) => !!a.matchedSessionId).toArray()
+  let changed = false
+  for (const a of acts) {
+    const s = await database.sessions.get(a.matchedSessionId!)
+    if (s?.kind !== 'controle' || pts.some((p) => p.date === a.date)) continue
+    const p = efficiencyFrom(a, a.laps)
+    if (p) {
+      pts.push(p)
+      changed = true
+    }
+  }
+  if (changed) await setSetting(EFFICIENCY_KEY, pts.sort((x, y) => (x.date < y.date ? -1 : 1)), database)
 }

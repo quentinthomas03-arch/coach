@@ -30,7 +30,7 @@ import { goalWeek } from './goals'
 const INPUTS_KEY = 'plan.inputs'
 export const STRENGTH_OFFSETS_KEY = 'strength.offsets'
 
-export const RUN_KINDS = new Set(['endurance', 'marche-course', 'seuil', 'fractionne', 'sortie-longue', 'cotes', 'recuperation', 'test'])
+export const RUN_KINDS = new Set(['endurance', 'marche-course', 'seuil', 'fractionne', 'sortie-longue', 'cotes', 'recuperation', 'test', 'controle'])
 export const isRunSession = (s: PlannedSession) => RUN_KINDS.has(s.kind)
 
 export function weekIndexOf(startDate: ISODate, weekStart: ISODate) {

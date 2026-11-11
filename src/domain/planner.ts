@@ -4,6 +4,7 @@ import { getLevel, isDeloadWeek, repriseLabel, repriseWorkout } from './reprise'
 import { buildStrengthSession, strengthDescription } from './strength'
 import { easyWorkout, fartlekWorkout, formeWeek, weekMinutes, type FormeSessionTemplate } from './forme'
 import { withRoutines, type FragileZone } from './routines'
+import { controlWorkout } from './cycle'
 import { applyPaces, type SessionPaces } from './sessionPaces'
 import { applyPrefs, DEFAULT_PREFS, type SessionPrefs } from './sessionPrefs'
 import { estimateDurationSec, toIntervalsText, type Workout } from './workout'
@@ -308,13 +309,18 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
       })
     }
   } else {
+    let controlPlaced = false
     for (const wd of runDays) {
       const long = wd === longDay
       const max = avail(wd)!.maxMinutes
       const reasons = [`${weekLabel} · reprise niveau ${level}/9.`]
       let lvl = level
       let isLong = long
-      const build = () => withRoutines(applyPaces(applyPrefs(repriseWorkout(lvl, isLong), input.prefs ?? DEFAULT_PREFS, input.paces), input.paces), input.zones)
+      // Fin de cycle en reprise avancée (course continue) : la 1re sortie non longue devient le contrôle aérobie.
+      const control = deload && level >= 7 && !long && !controlPlaced
+      if (control) controlPlaced = true
+      const build = () =>
+        withRoutines(applyPaces(applyPrefs(control ? controlWorkout() : repriseWorkout(lvl, isLong), input.prefs ?? DEFAULT_PREFS, input.paces), input.paces), input.zones)
       let w = build()
       if (long) reasons.push(`Sortie longue du ${WEEKDAYS[wd]} : ${repriseLabel(lvl, true)}, toujours à allure de conversation.`)
       else reasons.push(`${repriseLabel(lvl)}, à allure de conversation (zone 2).`)
@@ -333,7 +339,10 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
       if (input.paces) reasons.push(input.paces.estimated ? 'Allures estimées d’après tes records : elles s’affineront avec tes premières sorties.' : 'Allures calculées d’après ta forme mesurée.')
       if (missedRun && dates[wd] > missedRun.date) reasons.push(`Remplace la séance non faite du ${WEEKDAYS[weekdayIndex(missedRun.date)]}.`)
       if (long) generatedKeyDays.push(wd)
-      sessions.push(runSession(dates[wd], w, { long, level: lvl, reasons }))
+      if (control) {
+        reasons.splice(1, 1, 'Fin de cycle : 20 min régulières à FC zone 2. À fréquence cardiaque égale, ton allure dira si ton endurance progresse.')
+        sessions.push({ ...runSession(dates[wd], w, { long: false, level: lvl, reasons }), kind: 'controle', title: 'Contrôle aérobie' })
+      } else sessions.push(runSession(dates[wd], w, { long, level: lvl, reasons }))
     }
   }
 

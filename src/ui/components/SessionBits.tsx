@@ -42,6 +42,7 @@ export function fmtMinSec(sec: number): string {
 export function sessionSummary(s: PlannedSession): string {
   if (s.kind === 'repos') return 'Repos ou marche tranquille'
   if (s.kind === 'renfo' && s.strength) return s.strength.items.map((i) => i.name).join(' · ')
+  if (s.kind === 'controle') return '20 min régulières à FC zone 2 (contrôle de fin de cycle)'
   const main = s.workout?.blocks.find((b) => b.role === 'main')
   if (!main) return ''
   const step = main.steps[0]

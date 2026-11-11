@@ -7,6 +7,7 @@ import type { LevelDecision } from '../domain/reprise'
 import { tabacStatus, type TabacStatus } from '../domain/tabac'
 import { getPlanConfig, getTabac, KEYS } from './config'
 import { applyWeeklyReviews, dailyStale, endPause, regenerate } from './plan'
+import { maybeBuildCycleReview } from './cycle'
 import { syncToWatch, type SyncResult } from './sync'
 import { activitiesAwaitingRpe, importFromIntervals } from './importer'
 import { nutritionDay } from './nutrition'
@@ -39,6 +40,7 @@ export async function dailyRefresh(today: ISODate): Promise<{ sync?: SyncResult 
   const cause = decisions.length ? `Bilan de la semaine : ${decisions[decisions.length - 1].reason}` : stale.length ? 'Séance(s) non faite(s)' : 'Mise à jour du plan'
   await regenerate(cause, today)
   const sync = await syncToWatch(today).catch(() => undefined)
+  await maybeBuildCycleReview(today).catch(() => undefined)
   return { sync }
 }
 

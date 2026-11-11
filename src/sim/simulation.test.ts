@@ -7,6 +7,7 @@ import { CoachDB } from '../data/db'
 import type { PlannedSession } from '../data/types'
 import { savePlanConfig, getPlanConfig } from '../app/config'
 import { applyWeeklyReviews, dailyStale, markDone, regenerate } from '../app/plan'
+import { getCycleReviews, maybeBuildCycleReview } from '../app/cycle'
 import { addDays, mondayOf, weekdayIndex } from '../domain/dates'
 import { runningMinutes } from '../domain/planInputs'
 
@@ -41,6 +42,7 @@ async function simulate(name: string, weeks: number, policy: Policy, opts: { che
     await dailyStale(day, database)
     await applyWeeklyReviews(day, database)
     const r = await regenerate(d === 0 ? 'Création' : 'Ouverture', day, database)
+    await maybeBuildCycleReview(day, database)
     if (r.changed && d > 0 && !(r.version?.causes ?? []).length) violations.push(`${day} : changement sans cause`)
     for (const s of (await database.sessions.where('date').equals(day).toArray()).filter((x) => x.status === 'planned' && x.kind !== 'repos')) {
       const p = policy(s, week, day)
@@ -61,7 +63,10 @@ async function simulate(name: string, weeks: number, policy: Policy, opts: { che
   }
   console.log(`\n=== ${name} ===\nsem | mode    | niv | base | course prévue (min) | faites`)
   for (const w of table) console.log(`${String(w.week).padStart(3)} | ${w.mode.padEnd(7)} | ${String(w.level).padStart(3)} | ${String(w.base ?? '-').padStart(4)} | ${String(w.runMin).padStart(18)} | ${w.done}/${w.planned}`)
-  return { table, violations }
+  const reviews = await getCycleReviews(database)
+  const controls = (await database.sessions.toArray()).filter((x) => x.kind === 'controle').length
+  console.log(`bilans de cycle : ${reviews.map((r) => `${r.start} ${r.verdict}`).join(' | ')} · contrôles aérobies : ${controls}`)
+  return { table, violations, reviews, controls }
 }
 
 const growth = (t: Week[]) => {
@@ -77,8 +82,11 @@ const growth = (t: Week[]) => {
 
 describe('simulation sur plusieurs mois', () => {
   it('l’assidu : tout fait, effort modéré → reprise bouclée puis forme continue, progression douce', async () => {
-    const { table, violations } = await simulate('assidu', 16, () => ({ done: true, rpe: 5 }))
+    const { table, violations, reviews, controls } = await simulate('assidu', 16, () => ({ done: true, rpe: 5 }))
     expect(violations).toEqual([])
+    expect(reviews.length).toBe(3)
+    expect(reviews.every((r) => r.verdict === 'reussi')).toBe(true)
+    expect(controls).toBeGreaterThanOrEqual(2)
     expect(growth(table)).toEqual([])
     expect(table.find((w) => w.mode === 'forme')).toBeDefined()
     expect(table[table.length - 1].runMin).toBeGreaterThan(table[0].runMin)

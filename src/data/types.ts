@@ -65,6 +65,7 @@ export type SessionKind =
   | 'cotes'
   | 'recuperation'
   | 'test'
+  | 'controle'
   | 'renfo'
   | 'repos'
 

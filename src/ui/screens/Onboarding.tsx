@@ -11,7 +11,7 @@ import { Choice, Stepper, Toggle } from '../components/Choice'
 import { DAY_NAMES, WeekEditor } from '../components/WeekEditor'
 
 const EQUIPMENT: { id: EquipmentId; label: string }[] = [
-  { id: 'tapis', label: 'Tapis' },
+  { id: 'tapis', label: 'Tapis de sol' },
   { id: 'kettlebell', label: 'Kettlebell' },
   { id: 'elastiques', label: 'Élastiques' },
   { id: 'roue-abdos', label: 'Roue abdos' },

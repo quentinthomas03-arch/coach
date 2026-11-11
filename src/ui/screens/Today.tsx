@@ -21,6 +21,7 @@ import { formatLongFr, todayISO } from '../../domain/dates'
 import type { CoachMessage } from '../../domain/coach'
 import { Scale5 } from '../components/Segmented'
 import { Choice } from '../components/Choice'
+import { WeatherCard } from '../components/WeatherCard'
 import { LockTag, StatusTag, WatchBadge, WorkoutSteps, sessionSummary } from '../components/SessionBits'
 
 const ZONES = ['Genou', 'Mollet', 'Tendon d’Achille', 'Cheville', 'Hanche', 'Dos', 'Pied', 'Autre']
@@ -471,6 +472,7 @@ export function Today() {
         </Link>
       )}
       <Messages list={view.messages} today={today} />
+      {!view.pause && <WeatherCard today={today} />}
       <Results today={today} />
       {view.awaitingRpe.map((a) => (
         <section key={a.id} className="card" aria-label="Séance détectée">

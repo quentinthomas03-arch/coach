@@ -11,7 +11,7 @@ import { DAY_NAMES } from '../components/WeekEditor'
 import { ZONE_LABEL, type FragileZone } from '../../domain/routines'
 
 const EQUIP_LABELS: Record<EquipmentId, string> = {
-  tapis: 'Tapis', kettlebell: 'Kettlebell', elastiques: 'Élastiques', 'roue-abdos': 'Roue abdos',
+  tapis: 'Tapis de sol', kettlebell: 'Kettlebell', elastiques: 'Élastiques', 'roue-abdos': 'Roue abdos',
   escalier: 'Escalier', mur: 'Mur libre', banc: 'Banc', 'barre-traction': 'Barre de traction',
 }
 

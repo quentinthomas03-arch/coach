@@ -27,3 +27,10 @@ export function currentPosition(): Promise<{ lat: number; lon: number } | undefi
     )
   })
 }
+
+/** Prévision horaire sur 4 jours (température, ressenti, pluie, vent, temps, soleil). */
+export async function fetchForecast(lat: number, lon: number, fetchFn: typeof fetch = fetch): Promise<unknown> {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&hourly=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=sunrise,sunset&timezone=auto&forecast_days=4`
+  const res = await fetchFn(url)
+  return res.ok ? res.json() : undefined
+}

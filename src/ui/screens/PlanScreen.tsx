@@ -16,6 +16,7 @@ import { getLevel, MAX_REPRISE_LEVEL } from '../../domain/reprise'
 import { Choice } from '../components/Choice'
 import { useDbQuery } from '../useDbQuery'
 import { RacesCard } from './RacesCard'
+import { RaceDayCard } from './RaceDayCard'
 import { PageTitle } from '../Layout'
 
 const PHASE_COLOR: Record<Phase, string> = {
@@ -361,6 +362,7 @@ export function PlanScreen() {
               <AssessmentCard a={assessment} />
             </details>
           )}
+          <RaceDayCard goal={goal} predictedSec={assessment?.predictionAtDate} today={today} />
           <button
             className="btn-secondary w-full text-danger"
             onClick={async () => {

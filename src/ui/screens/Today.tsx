@@ -473,6 +473,7 @@ export function Today() {
       )}
       <Messages list={view.messages} today={today} />
       {!view.pause && <WeatherCard today={today} />}
+      <RaceSoon today={today} />
       <Results today={today} />
       {view.awaitingRpe.map((a) => (
         <section key={a.id} className="card" aria-label="Séance détectée">
@@ -527,5 +528,18 @@ export function Today() {
       <NutritionCard today={today} />
       <TabacCard view={view} />
     </div>
+  )
+}
+
+/** Semaine de course : lien vers le plan de course. */
+function RaceSoon({ today }: { today: string }) {
+  const goal = useDbQuery(() => getGoal(), [])
+  if (!goal || goal.date < today || goal.date > addDays(today, 7)) return null
+  const n = Math.round((Date.parse(goal.date) - Date.parse(today)) / 86400000)
+  return (
+    <Link to="/plan#jour-j" className="card tint tint-course block">
+      <p className="font-semibold">🏁 {n === 0 ? 'C’est le jour J !' : n === 1 ? 'Course demain' : `Course dans ${n} jours`} : {goal.name ?? 'ton objectif'}</p>
+      <p className="text-sm text-muted">Allures, repas, échauffement et sac de la veille : ton plan de course est prêt.</p>
+    </Link>
   )
 }

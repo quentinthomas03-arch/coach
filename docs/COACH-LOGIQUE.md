@@ -38,6 +38,20 @@ Tout est du code déterministe et testé, sans IA. Chaque décision est expliqu�
 - **Allure facile** : de −60 à +60 s/km par rapport au calcul.
 - **Retour en un tap après une séance faite** : « allures trop faciles / bien / trop dures ». Les séances suivantes accélèrent ou ralentissent de 10 s/km, et « Ce qui a changé » l'indique.
 
+## Analyse et suivi (inspirés des applis de référence)
+| Fonction | Inspiration | Règle |
+|---|---|---|
+| Analyse de chaque sortie | Runna, Kiprun | Séance facile : allure moyenne comparée à la fourchette. Plus de 15 s/km trop vite → recadrage, avec « Ralentir mes allures » en un tap. Marche-course : FC moyenne ≥ 85 % de la FC max → trop intense. Séance écourtée signalée sans reproche. |
+| Condition, fatigue, fraîcheur | TrainingPeaks, Intervals.icu | Moyennes exponentielles de la charge (durée × effort) sur 42 et 7 jours, calculées à partir de ta première séance. |
+| Statut d'entraînement | Garmin | Productif (condition +5 % en 2 semaines), maintien, surcharge (fraîcheur < −30 % de la condition), récupération, désentraînement (10 jours sans séance). |
+| Temps de récupération | Garmin | Facile 12 h, modérée 24 h, dure 36 h, très dure 48 h, +12 h au-delà de 90 min. Pris en compte dans la forme du jour. |
+| Forme du jour personnelle | Whoop, Oura | Nuit plus courte d'au moins 1 h que ta moyenne des 2 semaines → −8 ; récupération en cours ≥ 12 h → −10 ; FC de repos ≥ +5 bpm sur ta moyenne → −10. |
+| « Je n'ai que X min », échanger deux séances | Runna | Bloc principal réduit, échauffement et étirements conservés ; les deux séances deviennent « choisies par toi ». |
+| Renfo exercice par exercice | Fitbod, Freeletics | Retour « trop facile / bien / trop dur » par exercice : ±1 niveau pour cet exercice seulement, ±2 au maximum. |
+| Anneaux du jour, série de régularité | Apple Fitness, Nike Run Club | Séances de la semaine, protéines, eau, sommeil. Série = semaines consécutives avec toutes les séances sauf une au maximum. |
+| Chronos prédits dans le temps | Garmin | Prédiction 10 km recalculée à chaque performance. |
+| Saisie rapide de calories | MyFitnessPal | Pour un repas que tu n'as pas envie de détailler. |
+
 ## Nutrition
 - **Besoins du jour** : métabolisme de base (Mifflin-St Jeor) × activité, plus les séances. Les calories des séances viennent de la montre quand elle les fournit (nettes du métabolisme de base), sinon d'une estimation.
 - **Répartition** : la journée est répartie par repas selon l'heure de ta séance (collation avant la course du soir, dîner de récupération).

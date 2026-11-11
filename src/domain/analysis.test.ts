@@ -45,6 +45,10 @@ describe('condition, fatigue, fraîcheur', () => {
     const s = fitnessSeries(spike, addDays(day0, 40), addDays(day0, 65))
     expect(trainingStatus(s, spike, addDays(day0, 65))).toBe('surcharge')
   })
+  it('fenêtre d’affichage plus longue que l’historique : pas de fausse surcharge', () => {
+    const s = fitnessSeries(regular, addDays(day0, -60), addDays(day0, 59))
+    expect(trainingStatus(s, regular, addDays(day0, 59))).toBe('productif')
+  })
   it('arrêt de 12 jours → désentraînement', () => {
     const s = fitnessSeries(regular, addDays(day0, 40), addDays(day0, 70))
     expect(trainingStatus(s, regular, addDays(day0, 70))).toBe('desentrainement')

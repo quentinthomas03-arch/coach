@@ -6,7 +6,8 @@ import { PAUSE_LABEL, type PauseReason } from '../../domain/pause'
 import { abandonGoal, addPerformance, assess, getGoal, getPerformances, removePerformance, scheduleCalibrationTest, setGoal } from '../../app/goals'
 import { syncToWatch } from '../../app/sync'
 import { addDays, formatLongFr, mondayOf, todayISO } from '../../domain/dates'
-import { estimateFitness } from '../../domain/fitness'
+import { estimateFitness, predictionHistory } from '../../domain/fitness'
+import { LineChart } from '../components/Charts'
 import { goalLabel, type Goal, type GoalAssessment, type GoalType } from '../../domain/goals'
 import { PHASE_LABEL, peakMinutesFor, phasesFor, taperWeeksFor, totalWeeks, type Phase } from '../../domain/goalPlan'
 import { DISTANCE_LABEL, DISTANCES, formatTime, parseTime, predictTimeSec, trainingPaces, type RoadDistance } from '../../domain/paces'
@@ -393,6 +394,16 @@ export function PlanScreen() {
             Chronos prédits aujourd’hui (si préparé) : {(['5k', '10k', 'semi', 'marathon'] as const).map((d) => `${DISTANCE_LABEL[d].replace('semi-marathon', 'semi')} ${formatTime(predictTimeSec(fitness.vdot!, DISTANCES[d]))}`).join(' · ')}
           </p>
         )}
+        {(() => {
+          const h = predictionHistory(perfs, today, DISTANCES['10k'], predictTimeSec)
+          return h.length >= 2 ? (
+            <LineChart
+              title="Ton 10 km prédit dans le temps"
+              unit="min"
+              data={h.map((p) => ({ label: `${Number(p.date.slice(8))}/${Number(p.date.slice(5, 7))}`, value: Math.round(p.sec / 6) / 10 }))}
+            />
+          ) : null
+        })()}
         {reprise ? (
           <p className="text-sm text-muted">Le test de calibration (30 min) sera possible à la fin de la reprise.</p>
         ) : (

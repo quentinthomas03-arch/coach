@@ -106,3 +106,17 @@ export function detectEfforts(activities: EffortCandidate[], hrMax?: number): Pe
 export function hrMaxOf(measured: number | undefined, age: number): number {
   return measured ?? Math.round(208 - 0.7 * age)
 }
+
+/** Historique du chrono prédit (à chaque nouvelle performance, puis aujourd'hui) sur une distance. */
+export function predictionHistory(perfs: Performance[], today: ISODate, distanceM: number, predict: (vdot: number, d: number) => number): { date: ISODate; sec: number }[] {
+  const dates = [...new Set(perfs.map((p) => p.date).filter((d) => d <= today))].sort()
+  const out: { date: ISODate; sec: number }[] = []
+  for (const d of [...dates, today]) {
+    const f = estimateFitness(perfs.filter((p) => p.date <= d), d)
+    if (f.vdot != null) {
+      const sec = predict(f.vdot, distanceM)
+      if (!out.length || out[out.length - 1].date !== d) out.push({ date: d, sec })
+    }
+  }
+  return out
+}

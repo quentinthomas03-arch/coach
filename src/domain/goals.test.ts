@@ -100,3 +100,13 @@ describe('efforts détectés automatiquement', () => {
     expect(hrMaxOf(191, 34)).toBe(191)
   })
 })
+
+import { predictionHistory } from './fitness'
+import { predictTimeSec } from './paces'
+describe('chronos prédits dans le temps', () => {
+  it('un point par performance, puis aujourd’hui (désentraînement compris)', () => {
+    const h = predictionHistory(records, '2026-11-10', 10000, predictTimeSec)
+    expect(h.map((p) => p.date)).toEqual(['2026-03-15', '2026-05-10', '2026-11-10'])
+    expect(h[2].sec).toBeGreaterThan(h[1].sec)
+  })
+})

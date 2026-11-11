@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { db } from '../../data/db'
 import { addDays, mondayOf, parseISODate, todayISO } from '../../domain/dates'
 import { buildLoadEntries, loadStatus, weeklyLoads } from '../../domain/load'
+import { fitnessSeries, STATUS_TEXT, trainingStatus } from '../../domain/fitnessModel'
 import { BarChart, LineChart, StatTile } from '../components/Charts'
 import { useDbQuery } from '../useDbQuery'
 import { PageTitle } from '../Layout'
@@ -51,12 +52,14 @@ export function Suivi() {
       db.checkins.where('date').between(addDays(today, -13), today, true, true).toArray(),
     ])
     const entries = buildLoadEntries(acts, sessions, feedback)
+    const series = fitnessSeries(entries, addDays(today, -55), today)
+    const status = trainingStatus(series, entries, today)
     const weeks = weeklyLoads(entries, mondayOf(today), WEEKS)
     const plannedStrength = (ws: string) => sessions.filter((s) => s.kind === 'renfo' && s.date >= ws && s.date < addDays(ws, 7)).length
-    return { entries, weeks, status: loadStatus(entries, today), wellness, weights, checkins, plannedStrength }
+    return { entries, weeks, status: loadStatus(entries, today), wellness, weights, checkins, plannedStrength, series, trStatus: status }
   }, [today])
   if (!data) return null
-  const { weeks, status, wellness, weights, checkins, plannedStrength } = data
+  const { weeks, status, wellness, weights, checkins, plannedStrength, series, trStatus } = data
   const cur = weeks[weeks.length - 1]
   const sleep = wellness.map((w) => w.sleepHours).filter((x): x is number => x != null)
   const rhr = wellness.map((w) => w.restingHr).filter((x): x is number => x != null)
@@ -103,6 +106,24 @@ export function Suivi() {
             data={weeks.map((w, i) => ({ label: shortDate(w.weekStart), value: w.strengthSessions, detail: `${w.strengthSessions} faite(s) / ${plannedStrength(w.weekStart)} prévue(s)`, current: i === weeks.length - 1 }))}
           />
         </>
+      )}
+
+      {!nothing && (
+        <section className="space-y-2" aria-label="Condition et fraîcheur">
+          <h2 className="display text-lg">Condition et fraîcheur</h2>
+          <p className="text-[15px]">{STATUS_TEXT[trStatus]}</p>
+          {series.length > 14 && (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <StatTile label="Condition" value={fmt1(series[series.length - 1].condition)} sub="construite sur 6 sem." />
+                <StatTile label="Fatigue" value={fmt1(series[series.length - 1].fatigue)} sub="7 derniers jours" />
+                <StatTile label="Fraîcheur" value={fmt1(series[series.length - 1].fraicheur)} sub={series[series.length - 1].fraicheur < 0 ? 'en charge' : 'reposé'} />
+              </div>
+              <LineChart title="Condition (8 semaines)" unit="" data={series.filter((_, i) => i % 7 === series.length % 7 || i === series.length - 1).map((p) => ({ label: shortDate(p.date), value: p.condition }))} />
+              <p className="text-xs text-muted">Valeurs relatives (durée × effort) : compare-toi à toi-même. Une fraîcheur négative est normale en semaine de charge.</p>
+            </>
+          )}
+        </section>
       )}
 
       <section className="space-y-2" aria-label="Récupération">

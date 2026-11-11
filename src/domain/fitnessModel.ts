@@ -23,7 +23,8 @@ export function fitnessSeries(entries: LoadEntry[], from: ISODate, to: ISODate):
   const kC = 1 - Math.exp(-1 / 42)
   const kF = 1 - Math.exp(-1 / 7)
   const out: FitnessPoint[] = []
-  const start = entries.length ? entries.reduce((m, e) => (e.date < m ? e.date : m), from) : from
+  // Le calcul commence à la première séance (jamais avant : on partirait d'une condition nulle).
+  const start = entries.length ? entries.reduce((m, e) => (e.date < m ? e.date : m), entries[0].date) : from
   // Point de départ : charge quotidienne moyenne des 14 premiers jours (évite une fausse « surcharge »
   // au démarrage, quand la condition partirait de zéro).
   let seed = 0

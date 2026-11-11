@@ -24,6 +24,7 @@ Coach d'entraînement personnel sur iPhone : course à pied, renforcement muscul
 Le plan se recalcule tout seul à chaque ouverture de l’appli : import des séances faites, bilan de la semaine, envoi des 7 prochains jours de course sur la montre.
 
 ### Ce que le coach fait aussi
+- **Analyse et suivi** : chaque sortie est comparée à ce qui était demandé (allure, FC) ; condition / fatigue / fraîcheur et statut d’entraînement ; temps de récupération ; forme du jour comparée à ta propre normale ; anneaux du jour et série de semaines régulières ; « je n’ai que 30 min » et échange de séances ; renfo ajusté exercice par exercice ; chronos prédits dans le temps ; saisie rapide de calories. Détails dans `docs/COACH-LOGIQUE.md`.
 - **Tes corrections** (Réglages › Mes séances) : « je ne marche pas », ton allure d’échauffement, ton allure facile plus lente ou plus rapide ; et après chaque séance, « allures trop faciles / bien / trop dures » ajuste les suivantes de 10 s/km.
 - **Échauffement et étirements obligatoires** : chaque séance de course commence par 4 min de mobilité et gammes et se termine par 5 min d’étirements, sur la montre comme dans l’appli (guidés avec chrono : boutons « Échauffement guidé » et « Étirements guidés »).
 - **Zones fragiles** (Réglages › Plan) : exercices de prévention ciblés dans le renfo, l’échauffement et les étirements. Si une douleur revient au même endroit, le coach propose de l’ajouter en 1 tap.

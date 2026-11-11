@@ -95,6 +95,17 @@ function CustomFood({ onCreated, onBack, initialName = '' }: { onCreated: (f: Fo
 
 function ItemRow({ it, onChange, onRemove, onSwap }: { it: Item; onChange: (i: Item) => void; onRemove: () => void; onSwap: () => void }) {
   const [exact, setExact] = useState(it.grams != null)
+  if (it.food.group === 'Saisie rapide')
+    return (
+      <li className="border-t border-line py-2.5 flex items-center justify-between gap-2">
+        <span>
+          <span className="font-semibold">{it.food.name}</span> <span className="text-sm text-muted num">· {it.food.kcal} kcal</span>
+        </span>
+        <button className="w-10 h-11 text-muted" aria-label={`Retirer ${it.food.name}`} onClick={onRemove}>
+          ✕
+        </button>
+      </li>
+    )
   const p = normalPortion(it.food)
   const g = gramsOf(it)
   const v = forGrams(it.food, g)
@@ -137,6 +148,34 @@ function ItemRow({ it, onChange, onRemove, onSwap }: { it: Item; onChange: (i: I
       )}
       {!exact && <p className="text-xs text-muted mt-1">Portion normale : {p.label} (≈ {p.g} g)</p>}
     </li>
+  )
+}
+
+/** Saisie rapide (comme MyFitnessPal) : juste des calories, quand je n'ai pas envie de détailler. */
+function QuickKcal({ onAdd }: { onAdd: (f: FoodItem) => void }) {
+  const [kcal, setKcal] = useState('')
+  const [name, setName] = useState('')
+  const v = Number(kcal)
+  return (
+    <details className="card">
+      <summary className="font-semibold min-h-[40px] flex items-center">Saisie rapide (juste les calories)</summary>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <input className="field" inputMode="numeric" placeholder="kcal" aria-label="Calories" value={kcal} onChange={(e) => setKcal(e.target.value.replace(/\D/g, ''))} />
+        <input className="field" placeholder="ex. resto" aria-label="Nom (facultatif)" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <button
+        className="btn-secondary w-full mt-2"
+        disabled={!v || v > 5000}
+        onClick={() => {
+          onAdd({ id: `rapide-${Date.now().toString(36)}`, source: 'perso', name: name.trim() || 'Saisie rapide', kcal: v, protein: 0, carbs: 0, fat: 0, group: 'Saisie rapide' })
+          setKcal('')
+          setName('')
+        }}
+      >
+        Ajouter au repas
+      </button>
+      <p className="text-xs text-muted mt-1">Les protéines ne sont pas comptées : le coach te le rappellera.</p>
+    </details>
   )
 }
 
@@ -314,6 +353,8 @@ export function AddFood({ date, meal: initialMeal, onClose }: { date: string; me
               </>
             )}
           </section>
+
+          {!swapping && q.trim().length < 2 && <QuickKcal onAdd={(f) => setItems([...items, { ...mk(f), grams: 100 }])} />}
 
           {!swapping && q.trim().length < 2 && (
             <>

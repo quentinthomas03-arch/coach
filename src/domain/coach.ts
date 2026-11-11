@@ -79,7 +79,7 @@ export interface CoachContext {
 
 type Variants = Record<Tone, string>
 
-const say = (rule: string, kind: MessageKind, v: Variants, tone: Tone): CoachMessage => ({ rule, kind, text: v[tone] })
+const say = (rule: string, kind: MessageKind, v: Variants, tone: Tone, action?: CoachMessage['action']): CoachMessage => ({ rule, kind, text: v[tone], ...(action ? { action } : {}) })
 
 const inLast = (today: ISODate, days: number) => (d: ISODate) => d < today && d >= addDays(today, -days)
 
@@ -315,6 +315,24 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
         bienveillant: `J−${t.daysUntilQuit} avant l’arrêt du tabac. As-tu pris rendez-vous avec ton médecin ou ton pharmacien pour les substituts ?`,
         direct: `J−${t.daysUntilQuit} avant l’arrêt. Prépare le terrain : substituts, raisons écrites, plan pour les moments à risque.`,
         cash: `J−${t.daysUntilQuit}. Les substituts, c’est maintenant qu’on les prévoit, pas le 1er au matin.`,
+      }, tone),
+    )
+  }
+  if (t?.phase === 'preparation' && t.prep && t.daysUntilQuit != null && t.daysUntilQuit > 14 && t.daysUntilQuit % 7 === 0) {
+    out.push(
+      say('tabac-prepa', 'info', {
+        bienveillant: `Arrêt du tabac, J−${t.daysUntilQuit} : cette semaine, « ${t.prep.title} ». ${t.prep.todo[0]}`,
+        direct: `Tabac, semaine « ${t.prep.title} » : ${t.prep.todo[0]}`,
+        cash: `Tabac, J−${t.daysUntilQuit}. Cette semaine : ${t.prep.todo[0].charAt(0).toLowerCase()}${t.prep.todo[0].slice(1)}`,
+      }, tone, { label: 'Voir le programme', type: 'link', to: '/tabac' }),
+    )
+  }
+  if (t?.cravings && t.cravings.resisted7 >= 3 && t.cravings.resisted7 === t.cravings.last7) {
+    out.push(
+      say('tabac-envies', 'bravo', {
+        bienveillant: `${t.cravings.resisted7} envies de fumer tenues cette semaine, sans craquer. Chacune rend la suivante plus facile.`,
+        direct: `${t.cravings.resisted7} envies tenues sur 7 jours. Bien joué.`,
+        cash: `${t.cravings.resisted7} envies, ${t.cravings.resisted7} victoires. Continue.`,
       }, tone),
     )
   }

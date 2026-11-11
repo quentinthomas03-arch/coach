@@ -6,6 +6,7 @@ import { computeReadiness, proposeAdjustment, type Readiness, type SessionPropos
 import type { LevelDecision } from '../domain/reprise'
 import { tabacStatus, type TabacStatus } from '../domain/tabac'
 import { getPlanConfig, getTabac, KEYS } from './config'
+import { getCravings } from './tabac'
 import { applyWeeklyReviews, dailyStale, endPause, regenerate } from './plan'
 import { maybeBuildCycleReview } from './cycle'
 import { syncToWatch, type SyncResult } from './sync'
@@ -107,7 +108,7 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     : []
   const tabacCfg = await getTabac()
   const logs = (await db.checkins.toArray()).filter((c) => c.cigarettes != null).map((c) => ({ date: addDays(c.date, -1), count: c.cigarettes! }))
-  const tabac = tabacCfg ? tabacStatus(tabacCfg, logs, today) : undefined
+  const tabac = tabacCfg ? tabacStatus(tabacCfg, logs, today, await getCravings()) : undefined
   const last = await getSetting<{ at: ISODate; decisions: LevelDecision[] }>(KEYS.lastDecisions)
   const levelDecision = last && last.at >= addDays(today, -2) ? last.decisions[last.decisions.length - 1] : undefined
   const [acts, allSessions, feedback] = await Promise.all([

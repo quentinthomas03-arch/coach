@@ -99,6 +99,12 @@ body {
   .tint-eau { --tint: var(--c-eau); }
   .tint-tabac { --tint: var(--c-tabac); }
   .tint-sommeil { --tint: var(--c-sommeil); }
+  .pill {
+    @apply min-h-[40px] px-3 rounded-full border border-line bg-surface2 text-sm;
+  }
+  .pill-on {
+    @apply bg-accent text-on-accent border-transparent font-semibold;
+  }
   .chip {
     @apply inline-flex items-center justify-center w-9 h-9 rounded-full text-lg shrink-0;
     background: rgb(var(--tint) / 0.18);

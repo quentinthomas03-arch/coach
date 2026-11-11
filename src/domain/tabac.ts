@@ -17,6 +17,8 @@ export interface TabacSettings {
   cigsPerPack: number
   /** Mes raisons d'arrêter, rappelées dans les moments difficiles. */
   reasons: string[]
+  /** Mes moments à cigarette (identifiants de TRIGGERS). */
+  triggers?: string[]
 }
 
 export interface CigaretteLog {
@@ -59,12 +61,18 @@ export interface TabacStatus {
   /** Une rechute a eu lieu après la date d'arrêt (la série a redémarré). */
   relapsed?: boolean
   reached: typeof MILESTONES
+  /** Préparation : étape de la semaine et cible de cigarettes du jour. */
+  prep?: PrepStep
+  target?: number
+  cravings?: CravingStats
   next?: (typeof MILESTONES)[number] & { inDays: number }
 }
 
-export function tabacStatus(s: TabacSettings, logs: CigaretteLog[], today: ISODate): TabacStatus {
+export function tabacStatus(s: TabacSettings, logs: CigaretteLog[], today: ISODate, cravingLogs: CravingLog[] = []): TabacStatus {
+  const cravings = cravingLogs.length ? cravingStats(cravingLogs, today) : undefined
   if (today < s.quitDate) {
-    return { phase: 'preparation', daysUntilQuit: daysBetween(today, s.quitDate), reached: [] }
+    const n = daysBetween(today, s.quitDate)
+    return { phase: 'preparation', daysUntilQuit: n, reached: [], prep: prepStep(n), target: reductionTarget(s.cigsPerDayBefore, n), cravings }
   }
   const smokedAfterQuit = logs.filter((l) => l.date >= s.quitDate && l.date <= today && l.count > 0).sort((a, b) => (a.date < b.date ? -1 : 1))
   const last = smokedAfterQuit[smokedAfterQuit.length - 1]
@@ -84,6 +92,7 @@ export function tabacStatus(s: TabacSettings, logs: CigaretteLog[], today: ISODa
     moneySaved: Math.round(((avoided / s.cigsPerPack) * s.packPrice) * 100) / 100,
     relapsed: !!last,
     reached,
+    cravings,
     next: nextM ? { ...nextM, inDays: nextM.afterDays - days } : undefined,
   }
 }
@@ -123,4 +132,95 @@ export function rhrTrend(points: RhrPoint[], quitDate: ISODate, today: ISODate):
     if (v.length >= 3) weekly.push({ weekStart: ws, avg: avg(v)! })
   }
   return { baseline, current, delta: baseline != null && current != null ? Math.round((current - baseline) * 10) / 10 : undefined, weekly }
+}
+
+/**
+ * PRÉPARATION À L'ARRÊT (7 dernières semaines).
+ * Inspiré des étapes proposées par Tabac info service : observer, réduire, préparer l'entourage
+ * et les substituts, puis le jour J. La réduction est un repère, pas une obligation.
+ */
+export interface PrepStep {
+  weeksBefore: number
+  title: string
+  todo: string[]
+}
+
+export const PREP_STEPS: PrepStep[] = [
+  { weeksBefore: 7, title: 'Observer', todo: ['Note chaque cigarette dans le check du matin, sans rien changer.', 'Repère tes moments à cigarette : coche-les plus bas.', 'Écris tes raisons d’arrêter (Modifier mes réglages tabac).'] },
+  { weeksBefore: 6, title: 'Se faire accompagner', todo: ['Prends rendez-vous chez ton médecin ou ton pharmacien pour les substituts (patchs, gommes) : ils sont remboursés.', 'Ou appelle le 39 89 : un tabacologue gratuit te suit.'] },
+  { weeksBefore: 5, title: 'Supprimer les cigarettes faciles', todo: ['Supprime la cigarette qui te manquerait le moins.', 'Plus de cigarette à l’intérieur ni en voiture.'] },
+  { weeksBefore: 4, title: 'Réduire', todo: ['Vise la cible du jour indiquée plus haut.', 'Pour chaque moment coché, choisis un plan B.'] },
+  { weeksBefore: 3, title: 'Tester sans', todo: ['Passe une demi-journée sans fumer, avec les substituts si tu les as.', 'Utilise le bouton « Envie de fumer » à chaque envie : tu t’entraînes.'] },
+  { weeksBefore: 2, title: 'Prévenir', todo: ['Préviens ton entourage et demande-leur de ne pas te proposer de cigarette.', 'Prévois les soirées de fin d’année : où, avec qui, quel plan B.'] },
+  { weeksBefore: 1, title: 'Préparer le jour J', todo: ['Aie tes substituts à la maison.', 'La veille au soir : jette paquets, briquets et cendriers.', 'Choisis ta récompense pour la première semaine sans tabac.'] },
+]
+
+export function prepStep(daysUntilQuit: number): PrepStep | undefined {
+  if (daysUntilQuit <= 0 || daysUntilQuit > 49) return undefined
+  const w = Math.ceil(daysUntilQuit / 7)
+  return PREP_STEPS.find((s) => s.weeksBefore === w)
+}
+
+/** Repère de réduction : de 100 % à 5 semaines de l'arrêt jusqu'à 50 % à 1 semaine, puis stable. */
+export function reductionTarget(cigsPerDayBefore: number, daysUntilQuit: number): number | undefined {
+  if (daysUntilQuit <= 0 || daysUntilQuit > 35) return undefined
+  const ratio = daysUntilQuit <= 7 ? 0.5 : 0.5 + 0.5 * ((daysUntilQuit - 7) / 28)
+  return Math.max(1, Math.round(cigsPerDayBefore * ratio))
+}
+
+/** Moments à cigarette et plan B suggéré. */
+export const TRIGGERS: { id: string; label: string; planB: string }[] = [
+  { id: 'reveil', label: 'Au réveil', planB: 'Grand verre d’eau, douche tout de suite, petit-déjeuner ailleurs que d’habitude.' },
+  { id: 'cafe', label: 'Avec le café', planB: 'Change de lieu ou de boisson quelques semaines (thé, chicorée), ou bois-le en marchant.' },
+  { id: 'repas', label: 'Après le repas', planB: 'Lève-toi de table, brosse-toi les dents, 10 min de marche.' },
+  { id: 'pause', label: 'Pause au travail', planB: 'Garde la pause, sans la cigarette : marche, eau, gomme ou chewing-gum.' },
+  { id: 'stress', label: 'Stress', planB: 'Respiration 2 min (bouton « Envie de fumer »), puis une tâche courte.' },
+  { id: 'alcool', label: 'Alcool, soirées', planB: 'Moins d’alcool les premières semaines, reste avec les non-fumeurs, gommes dans la poche.' },
+  { id: 'voiture', label: 'En voiture', planB: 'Musique ou podcast, eau, gommes, cendrier retiré.' },
+  { id: 'ennui', label: 'Ennui', planB: 'Mains occupées : téléphone, balle anti-stress, un étirement.' },
+  { id: 'apres-sport', label: 'Après le sport', planB: 'Note ta FC de repos qui baisse : c’est la meilleure récompense.' },
+]
+
+/** Envie de fumer notée avec le bouton « Envie de fumer ». */
+export interface CravingLog {
+  at: string
+  resisted: boolean
+  trigger?: string
+}
+
+export interface CravingStats {
+  last7: number
+  resisted7: number
+  prev7: number
+  /** Heure où les envies sont les plus fréquentes (sur 4 semaines). */
+  peakHour?: number
+  topTrigger?: string
+  total: number
+  totalResisted: number
+}
+
+export function cravingStats(logs: CravingLog[], today: ISODate): CravingStats {
+  const d = (l: CravingLog) => l.at.slice(0, 10)
+  const in7 = logs.filter((l) => d(l) > addDays(today, -7) && d(l) <= today)
+  const prev = logs.filter((l) => d(l) > addDays(today, -14) && d(l) <= addDays(today, -7))
+  const recent = logs.filter((l) => d(l) > addDays(today, -28))
+  const top = <K,>(xs: K[]) => {
+    const c = new Map<K, number>()
+    xs.forEach((x) => c.set(x, (c.get(x) ?? 0) + 1))
+    let best: K | undefined
+    let n = 0
+    c.forEach((v, k) => {
+      if (v > n) [best, n] = [k, v]
+    })
+    return n >= 2 ? best : undefined
+  }
+  return {
+    last7: in7.length,
+    resisted7: in7.filter((l) => l.resisted).length,
+    prev7: prev.length,
+    peakHour: top(recent.map((l) => new Date(l.at).getHours())),
+    topTrigger: top(recent.map((l) => l.trigger).filter((x): x is string => !!x)),
+    total: logs.length,
+    totalResisted: logs.filter((l) => l.resisted).length,
+  }
 }

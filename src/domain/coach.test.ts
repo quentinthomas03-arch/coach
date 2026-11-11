@@ -91,7 +91,7 @@ describe('voix du coach', () => {
   })
   it('notes : douleur relevée avec action, bonnes sensations saluées', () => {
     const m = coachMessages(ctx({ noteInsights: [{ date: '2026-11-18', kind: 'douleur', zone: 'genou', excerpt: 'mal au genou' }] }))
-    expect(m.find((x) => x.rule === 'note-douleur')!.action?.zone).toBe('genou')
+    expect(m.find((x) => x.rule === 'note-douleur')!.action).toMatchObject({ type: 'add-zone', zone: 'genou' })
     expect(rules(ctx({ noteInsights: [{ date: '2026-11-18', kind: 'positif', excerpt: 'super sensations' }] }))).toContain('note-positif')
   })
   it('sommeil court', () => {

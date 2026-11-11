@@ -22,7 +22,7 @@ export interface CoachMessage {
   kind: MessageKind
   text: string
   /** Action proposée en 1 tap (ex. ajouter une zone fragile). */
-  action?: { label: string; type: 'add-zone'; zone: FragileZone }
+  action?: { label: string; type: 'add-zone'; zone: FragileZone } | { label: string; type: 'link'; to: string }
 }
 
 /** Zones du check du matin → zones fragiles. */
@@ -62,6 +62,10 @@ export interface CoachContext {
   noteInsights?: NoteInsight[]
   /** Sommeil moyen des 7 dernières nuits (h), si connu. */
   sleepAvg?: number
+  /** Aucune performance connue : pas de fourchette d'allure possible. */
+  noPaceRef?: boolean
+  /** Profil resté sur les valeurs par défaut de l'accueil. */
+  profileUnchecked?: boolean
 }
 
 type Variants = Record<Tone, string>
@@ -216,6 +220,24 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
       direct: `${h} h de sommeil en moyenne. La forme se construit la nuit : 30 min plus tôt au lit.`,
       cash: `${h} h par nuit. Tu t’entraînes, mais tu ne récupères pas. Au lit.`,
     }, tone))
+  }
+
+  // 5 quinquies. Données manquantes pour bien coacher.
+  if (ctx.noPaceRef) {
+    out.push({
+      rule: 'records',
+      kind: 'info',
+      text: 'Pour avoir une fourchette d’allure à chaque étape sur ta montre (comme sur Kiprun), donne-moi un chrono de référence : ton semi en 1h40, même ancien, suffit pour commencer.',
+      action: { label: 'Ajouter mes records', type: 'link', to: '/plan' },
+    })
+  }
+  if (ctx.profileUnchecked) {
+    out.push({
+      rule: 'profil',
+      kind: 'info',
+      text: 'Ta taille, ton poids et ton âge sont encore ceux par défaut : tes besoins caloriques sont donc approximatifs. Corrige-les en 10 secondes.',
+      action: { label: 'Corriger mon profil', type: 'link', to: '/reglages#nutrition' },
+    })
   }
 
   // 6. Bravo : semaine complète.

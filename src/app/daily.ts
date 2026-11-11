@@ -16,6 +16,7 @@ import type { FragileZone } from '../domain/routines'
 import { isPaused } from '../domain/pause'
 import { detectOverload } from '../domain/overload'
 import { analyzeNote } from '../domain/notes'
+import { estimateFitness, type Performance } from '../domain/fitness'
 import { avgSleep, bedtime } from '../domain/sleep'
 
 /** Routine à l'ouverture de l'appli : bilan hebdo, recalcul, envoi montre. */
@@ -93,7 +94,10 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   const notes = await db.notes.where('date').between(addDays(today, -5), today, true, true).toArray()
   const noteInsights = notes.flatMap(analyzeNote)
   const sleepAvg = avgSleep((await db.wellness.where('date').between(addDays(today, -6), today, true, true).toArray()).map((w) => w.sleepHours))
-  const messages = cfg ? coachMessages({ noteInsights, sleepAvg, overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
+  const profile = await db.profile.get('me')
+  const noPaceRef = estimateFitness((await getSetting<Performance[]>(KEYS.perfs)) ?? [], today).confidence === 'inconnue'
+  const profileUnchecked = !!profile && profile.heightCm === 170 && profile.weightKg === 70 && profile.birthYear === 1990
+  const messages = cfg ? coachMessages({ noPaceRef, profileUnchecked, noteInsights, sleepAvg, overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
   return {
     today,
     sessions,

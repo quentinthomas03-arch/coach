@@ -46,9 +46,14 @@ function Messages({ list, today }: { list: CoachMessage[]; today: string }) {
             {m.text}
           </p>
           {m.action?.type === 'add-zone' && (
-            <button className="btn-secondary w-full mt-2" onClick={() => addFragileZone(m.action!.zone, today).then(() => syncToWatch(today))}>
+            <button className="btn-secondary w-full mt-2" onClick={() => m.action?.type === 'add-zone' && addFragileZone(m.action.zone, today).then(() => syncToWatch(today))}>
               {m.action.label}
             </button>
+          )}
+          {m.action?.type === 'link' && (
+            <Link to={m.action.to} className="btn-secondary w-full mt-2">
+              {m.action.label}
+            </Link>
           )}
         </div>
       ))}
@@ -331,7 +336,16 @@ function NutritionCard({ today }: { today: string }) {
       <Gauge label="Eau 💧" value={Math.round(d.waterMl / 10) / 100} target={Math.round(d.hydration.ml / 10) / 100} unit="L" color="eau" />
       <WaterButtons date={today} bottleMl={d.bottleMl} />
       {d.waterSource === 'montre' && <p className="text-xs text-muted">Eau enregistrée sur ta montre.</p>}
-      {d.tips && <p className="text-sm text-muted">{d.tips.avant[0]}</p>}
+      {(() => {
+        const h = new Date().getHours()
+        const next = h < 14 ? { label: 'Ce midi', p: d.plates.dejeuner } : h < 22 ? { label: 'Ce soir', p: d.plates.diner } : undefined
+        return next ? (
+          <p className="text-sm">
+            <span className="font-semibold">{next.label} : </span>
+            {next.p.text}
+          </p>
+        ) : null
+      })()}
     </section>
   )
 }

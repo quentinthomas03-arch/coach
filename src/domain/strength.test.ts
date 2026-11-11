@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EquipmentId } from '../data/types'
-import { EXERCISES, buildStrengthSession, formatPrescription, strengthDescription } from './strength'
+import { EXERCISES, buildStrengthSession, formatPrescription, strengthDescription, updateOffsets } from './strength'
 
 const HOME: EquipmentId[] = ['tapis', 'kettlebell', 'elastiques', 'roue-abdos', 'escalier', 'mur']
 
@@ -65,6 +65,17 @@ describe('séances de renfo', () => {
     expect(s.durationMin).toBeLessThanOrEqual(20)
     // Sans escalier : version au sol.
     expect(buildStrengthSession({ template: 'A', level: 2, equipment: [], zones: ['achille'] }).items[0].exerciseId).toBe('mollets-sol')
+  })
+  it('retour par exercice : seul l’exercice concerné change de niveau', () => {
+    const o = updateOffsets({}, { 'goblet-squat': 'trop-facile', 'gainage-ventral': 'trop-dur', 'pont-fessier': 'ok' })
+    expect(o).toEqual({ 'goblet-squat': 1, 'gainage-ventral': -1 })
+    const base = buildStrengthSession({ template: 'A', level: 2, equipment: HOME, maxMinutes: 60 })
+    const adj = buildStrengthSession({ template: 'A', level: 2, equipment: HOME, maxMinutes: 60, offsets: o })
+    const get = (s: typeof base, id: string) => s.items.find((i) => i.exerciseId === id)!
+    expect(formatPrescription(get(adj, 'goblet-squat'))).toBe(formatPrescription({ ...get(base, 'goblet-squat'), sets: 3, reps: 12 }))
+    expect(get(adj, 'gainage-ventral').variant).toBe('sur les genoux')
+    expect(get(adj, 'pont-fessier')).toEqual(get(base, 'pont-fessier'))
+    expect(updateOffsets({ x: 2 }, { x: 'trop-facile' })).toEqual({ x: 2 })
   })
   it('fonctionne sans aucun matériel', () => {
     for (const tpl of ['A', 'B'] as const)

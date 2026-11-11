@@ -62,6 +62,8 @@ export interface WeekPlanInput {
   paces?: SessionPaces
   /** Mes préférences de séance (marche ou non, allure d'échauffement). */
   prefs?: SessionPrefs
+  /** Renfo : ajustements par exercice d'après mes retours. */
+  strengthOffsets?: Record<string, number>
   /** Forme continue : volume de course d'une semaine de charge, en minutes. */
   formeBaseMinutes?: number
 }
@@ -362,7 +364,7 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
     const runSameDay = allRunDays.includes(wd)
     const runMin = runSameDay ? (sessions.find((s) => s.date === dates[wd] && isRun(s.kind))?.durationMin ?? 0) : 0
     const maxMinutes = Math.min(20, (avail(wd)?.maxMinutes ?? 20) - runMin)
-    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes, trail: input.trail, zones: input.zones })
+    const st = buildStrengthSession({ template, level: input.strengthLevel, equipment: input.equipment, deload, maxMinutes, trail: input.trail, zones: input.zones, offsets: input.strengthOffsets })
     const id = sessionId('renfo', dates[wd])
     const reasons = [
       input.trail

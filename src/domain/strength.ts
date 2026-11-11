@@ -314,6 +314,8 @@ export function buildStrengthSession(opts: {
   trail?: boolean
   /** Zones fragiles : un exercice de prévention ciblé par zone (2 max par séance). */
   zones?: FragileZone[]
+  /** Ajustement par exercice d'après mes retours (−2 à +2 niveaux). */
+  offsets?: Record<string, number>
 }): StrengthSession {
   const level = Math.min(5, Math.max(1, Math.round(opts.level)))
   const available = new Set(opts.equipment)
@@ -330,7 +332,8 @@ export function buildStrengthSession(opts: {
   ids.unshift(...zoneIds.slice(start, start + 2))
   const items = ids.map((id) => {
     const { ex, replaced } = resolve(id, available)
-    const p = ex.levels[level - 1]
+    const exLevel = Math.min(5, Math.max(1, level + (opts.offsets?.[ex.id] ?? 0)))
+    const p = ex.levels[exLevel - 1]
     return {
       exerciseId: ex.id,
       name: ex.name,
@@ -371,4 +374,17 @@ export function strengthDescription(s: StrengthSession): string {
     '',
     ...s.items.map((i, n) => `${n + 1}. ${i.name} : ${formatPrescription(i)}`),
   ].join('\n')
+}
+
+export type ExerciseFeedback = 'trop-facile' | 'ok' | 'trop-dur'
+
+/** Mes retours sur les exercices d'une séance → nouveaux ajustements par exercice (bornés à ±2). */
+export function updateOffsets(current: Record<string, number>, feedback: Record<string, ExerciseFeedback>): Record<string, number> {
+  const next = { ...current }
+  for (const [id, fb] of Object.entries(feedback)) {
+    const d = fb === 'trop-facile' ? 1 : fb === 'trop-dur' ? -1 : 0
+    next[id] = Math.max(-2, Math.min(2, (next[id] ?? 0) + d))
+    if (next[id] === 0) delete next[id]
+  }
+  return next
 }

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../data/db'
-import { markDone } from '../../app/plan'
+import { giveStrengthFeedback, markDone } from '../../app/plan'
+import type { ExerciseFeedback } from '../../domain/strength'
+import { todayISO } from '../../domain/dates'
 import { formatPrescription } from '../../domain/strength'
 import { buildSteps } from '../../domain/strengthSteps'
 
@@ -46,6 +48,7 @@ export function StrengthPlayer() {
   const [left, setLeft] = useState<number | null>(null)
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
+  const [exFb, setExFb] = useState<Record<string, ExerciseFeedback>>({})
   const beep = useBeep()
   useWakeLock()
 
@@ -84,7 +87,31 @@ export function StrengthPlayer() {
     return (
       <div className="space-y-4">
         <h1 className="display text-3xl">Bien joué !</h1>
-        <p>C’était dur comment ? (1 = très facile, 10 = à bloc)</p>
+        <section className="card">
+          <h2 className="font-semibold mb-1">Chaque exercice était…</h2>
+          <p className="text-xs text-muted mb-2">Le coach ajuste exercice par exercice pour les prochaines séances.</p>
+          <ul className="space-y-2">
+            {items.map((it) => (
+              <li key={it.exerciseId}>
+                <p className="text-sm font-medium">{it.name}</p>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {(
+                    [
+                      ['trop-facile', 'Trop facile'],
+                      ['ok', 'Bien'],
+                      ['trop-dur', 'Trop dur'],
+                    ] as const
+                  ).map(([v, l]) => (
+                    <button key={v} aria-pressed={exFb[it.exerciseId] === v} onClick={() => setExFb({ ...exFb, [it.exerciseId]: v })} className={`min-h-[40px] rounded-btn border text-sm ${exFb[it.exerciseId] === v ? 'bg-accent text-on-accent border-transparent font-semibold' : 'bg-surface2 border-line'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <p>Et la séance dans l’ensemble ? (1 = très facile, 10 = à bloc)</p>
         <div className="grid grid-cols-5 gap-1.5">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
             <button
@@ -92,6 +119,7 @@ export function StrengthPlayer() {
               className="h-12 rounded-btn bg-surface2 border border-line num font-semibold"
               onClick={async () => {
                 await markDone(session.id, n)
+                if (Object.keys(exFb).length) await giveStrengthFeedback(exFb, todayISO())
                 nav('/aujourdhui')
               }}
             >

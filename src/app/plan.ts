@@ -15,6 +15,7 @@ import { detectOverload, OVERLOAD_DAYS, OVERLOAD_VOLUME_FACTOR } from '../domain
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, getSessionPrefs, KEYS, savePlanConfig } from './config'
 import { adjustPaces, offsetAfterFeedback, type PaceFeedback, type SessionPrefs } from '../domain/sessionPrefs'
+import { updateOffsets, type ExerciseFeedback } from '../domain/strength'
 import { goalWeek } from './goals'
 
 /**
@@ -27,6 +28,7 @@ import { goalWeek } from './goals'
  */
 
 const INPUTS_KEY = 'plan.inputs'
+export const STRENGTH_OFFSETS_KEY = 'strength.offsets'
 
 export const RUN_KINDS = new Set(['endurance', 'marche-course', 'seuil', 'fractionne', 'sortie-longue', 'cotes', 'recuperation', 'test'])
 export const isRunSession = (s: PlannedSession) => RUN_KINDS.has(s.kind)
@@ -106,6 +108,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
   const notes: string[] = []
   const fitnessNow = estimateFitness((await getSetting<Performance[]>(KEYS.perfs, database)) ?? [], today)
   const prefs = await getSessionPrefs(database)
+  const strengthOffsets = (await getSetting<Record<string, number>>(STRENGTH_OFFSETS_KEY, database)) ?? {}
   const paces = adjustPaces(sessionPaces(fitnessNow, (cfg.mode ?? 'reprise') === 'reprise'), prefs)
   const equipment = await getEquipment(database)
   const overload = detectOverload(await database.checkins.where('date').between(addDays(today, -OVERLOAD_DAYS), today, true, true).toArray(), today)
@@ -148,6 +151,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       zones,
       paces,
       prefs,
+      strengthOffsets,
       blockedDates: Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => isPaused(cfg.pause, d)),
       mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
       formeBaseMinutes: cfg.formeBaseMinutes && overload.active ? Math.round(cfg.formeBaseMinutes * OVERLOAD_VOLUME_FACTOR) : cfg.formeBaseMinutes,
@@ -180,6 +184,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
     missed: sessionsAll.filter((s) => s.status === 'missed').map((s) => s.id).sort(),
     skipped: sessionsAll.filter((s) => s.status === 'skipped').map((s) => s.id).sort(),
     prefs,
+    strengthOffsets,
   }
   return { before, after, notes, inputs }
 }
@@ -422,4 +427,11 @@ export async function swapSessions(idA: string, idB: string, today: ISODate, dat
   await database.sessions.bulkPut(after)
   await database.planVersions.add({ createdAt: new Date().toISOString(), cause: 'Séances échangées par toi', causes: ['Séances échangées par toi.'], changes: diffSessions(before, after), before, after, status: 'applied' })
   await regenerate('Réorganisation après ton échange', today, database, { force: 'auto' })
+}
+
+/** Mes retours par exercice après un renfo : les prochains renfos s'ajustent exercice par exercice. */
+export async function giveStrengthFeedback(feedback: Record<string, ExerciseFeedback>, today: ISODate, database: CoachDB = db) {
+  const cur = (await getSetting<Record<string, number>>(STRENGTH_OFFSETS_KEY, database)) ?? {}
+  await setSetting(STRENGTH_OFFSETS_KEY, updateOffsets(cur, feedback), database)
+  return regenerate('Retour sur le renfo', today, database, { force: 'auto' })
 }

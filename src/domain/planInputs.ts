@@ -39,6 +39,8 @@ export interface PlanInputs {
   skipped: string[]
   /** Mes préférences de séance. */
   prefs?: { walk: boolean; warmupPace?: number; easyOffset: number }
+  /** Ajustements du renfo par exercice. */
+  strengthOffsets?: Record<string, number>
 }
 
 const WD = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
@@ -71,6 +73,11 @@ export function explainChanges(prev: PlanInputs | undefined, next: PlanInputs, s
       const d = np.easyOffset - pp.easyOffset
       out.push(`Allure facile ${d > 0 ? 'ralentie' : 'accélérée'} de ${Math.abs(d)} s/km d’après ton retour (décalage total : ${np.easyOffset > 0 ? '+' : ''}${np.easyOffset} s/km).`)
     }
+  }
+  if (JSON.stringify(prev.strengthOffsets ?? {}) !== JSON.stringify(next.strengthOffsets ?? {})) {
+    const changed = Object.keys({ ...(prev.strengthOffsets ?? {}), ...(next.strengthOffsets ?? {}) }).filter((k) => (prev.strengthOffsets ?? {})[k] !== (next.strengthOffsets ?? {})[k])
+    const up = changed.filter((k) => ((next.strengthOffsets ?? {})[k] ?? 0) > ((prev.strengthOffsets ?? {})[k] ?? 0)).length
+    out.push(`Renfo ajusté d’après ton retour : ${up ? `${up} exercice(s) plus difficile(s)` : ''}${up && changed.length - up ? ', ' : ''}${changed.length - up ? `${changed.length - up} plus facile(s)` : ''}.`)
   }
   const newMissed = next.missed.filter((id) => !prev.missed.includes(id))
   for (const id of newMissed) {

@@ -257,3 +257,25 @@ describe('mes corrections de séance', () => {
     expect(after).not.toBe(before)
   })
 })
+
+describe('ajustements rapides', () => {
+  it('« je n’ai que 30 min » : séance raccourcie, verrouillée, routines conservées', async () => {
+    await savePlanConfig(cfg({ repriseLevel: 5 }), database)
+    await regenerate('Création', MONDAY, database)
+    const s = (await database.sessions.toArray()).find((x) => x.kind === 'marche-course')!
+    const { shortenSession } = await import('./plan')
+    await shortenSession(s.id, 30, MONDAY, database)
+    const n = (await database.sessions.get(s.id))!
+    expect(n.durationMin).toBeLessThanOrEqual(30)
+    expect(n).toMatchObject({ locked: true, origin: 'moi' })
+    expect(n.workoutText).toMatch(/Mobilité et gammes/)
+  })
+  it('échanger deux séances', async () => {
+    await regenerate('Création', MONDAY, database)
+    const [a, b] = (await database.sessions.toArray()).filter((x) => x.date < addDays(MONDAY, 7)).sort((x, y) => (x.date < y.date ? -1 : 1))
+    const { swapSessions } = await import('./plan')
+    await swapSessions(a.id, b.id, MONDAY, database)
+    expect((await database.sessions.get(a.id))!.date).toBe(b.date)
+    expect((await database.sessions.get(b.id))!.date).toBe(a.date)
+  })
+})

@@ -3,7 +3,7 @@ import { useDbQuery } from '../useDbQuery'
 import type { DayAvailability, PlannedSession } from '../../data/types'
 import { db } from '../../data/db'
 import { getAvailability } from '../../app/config'
-import { acceptVersion, addMySession, computePlan, markDone, moveSession, regenerate, rejectVersion, removeSession, setLocked, undoVersion } from '../../app/plan'
+import { acceptVersion, addMySession, computePlan, markDone, moveSession, regenerate, rejectVersion, removeSession, setLocked, swapSessions, undoVersion } from '../../app/plan'
 import { syncToWatch } from '../../app/sync'
 import { addDays, formatLongFr, mondayOf, todayISO } from '../../domain/dates'
 import { repriseWorkout } from '../../domain/reprise'
@@ -16,8 +16,9 @@ import { PageTitle } from '../Layout'
 
 const afterChange = (today: string) => syncToWatch(today).catch(() => undefined)
 
-function SessionSheet({ s, weekStart, today, onClose }: { s: PlannedSession; weekStart: string; today: string; onClose: () => void }) {
+function SessionSheet({ s, weekStart, today, onClose, others }: { s: PlannedSession; weekStart: string; today: string; onClose: () => void; others: PlannedSession[] }) {
   const [moving, setMoving] = useState(false)
+  const [swapping, setSwapping] = useState(false)
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => d >= today)
   const act = async (fn: () => Promise<unknown>) => {
     await fn()
@@ -51,7 +52,20 @@ function SessionSheet({ s, weekStart, today, onClose }: { s: PlannedSession; wee
         </ul>
         {s.status === 'planned' && s.date >= today && (
           <>
-            {moving ? (
+            {swapping ? (
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">Échanger avec…</p>
+                <div className="space-y-2">
+                  {others
+                    .filter((o) => o.id !== s.id && o.status === 'planned' && o.date >= today && o.date !== s.date)
+                    .map((o) => (
+                      <button key={o.id} className="btn-secondary w-full justify-start first-letter:uppercase" onClick={() => act(() => swapSessions(s.id, o.id, today))}>
+                        {formatLongFr(o.date).split(' ').slice(0, 2).join(' ')} · {o.title}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            ) : moving ? (
               <div className="mt-4">
                 <p className="text-sm font-medium mb-2">Déplacer au…</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -68,6 +82,9 @@ function SessionSheet({ s, weekStart, today, onClose }: { s: PlannedSession; wee
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <button className="btn-secondary" onClick={() => setMoving(true)}>
                   Déplacer
+                </button>
+                <button className="btn-secondary" onClick={() => setSwapping(true)}>
+                  Échanger
                 </button>
                 <button className="btn-secondary" onClick={() => act(() => setLocked(s.id, !s.locked))}>
                   {s.locked ? 'Déverrouiller' : 'Verrouiller'}
@@ -288,7 +305,7 @@ export function Week() {
         </ul>
       </details>
 
-      {open && <SessionSheet s={open} weekStart={weekStart} today={today} onClose={() => setOpen(null)} />}
+      {open && <SessionSheet s={open} weekStart={weekStart} today={today} others={sessions ?? []} onClose={() => setOpen(null)} />}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { MorningCheckin, PlannedSession } from '../../data/types'
 import { db } from '../../data/db'
 import { addFragileZone, dismissProposal, loadToday, type TodayView } from '../../app/daily'
-import { applyProposal, givePaceFeedback, markDone, markMissed } from '../../app/plan'
+import { applyProposal, givePaceFeedback, markDone, markMissed, shortenSession } from '../../app/plan'
 import { saveActivityRpe } from '../../app/importer'
 import { setWaterEstimate } from '../../app/nutrition'
 import { addDays } from '../../domain/dates'
@@ -219,6 +219,18 @@ function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
         </div>
       )}
 
+      {s.status === 'planned' && s.kind !== 'repos' && s.kind !== 'renfo' && !rpe && s.durationMin > 25 && (
+        <div className="mt-3">
+          <p className="text-sm font-medium mb-1.5">Pas le temps ? Je n’ai que :</p>
+          <div className="flex gap-1.5">
+            {[20, 30, 45].filter((m) => m < s.durationMin - 2).map((m) => (
+              <button key={m} className="btn-secondary px-3 min-h-[44px] text-sm" onClick={() => shortenSession(s.id, m, view.today).then(() => syncToWatch(view.today))}>
+                {m} min
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {s.status === 'planned' && s.kind !== 'repos' && !rpe && (
         <div className="grid grid-cols-2 gap-2 mt-4">
           {s.kind === 'renfo' ? (

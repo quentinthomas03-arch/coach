@@ -2,6 +2,7 @@ import type { ISODate, PlannedSession, PlanVersion } from '../data/types'
 import { db, getSetting, setSetting, type CoachDB } from '../data/db'
 import { addDays, daysBetween, mondayOf } from '../domain/dates'
 import { diffSessions } from '../domain/changes'
+import { estimateDurationSec, scaleWorkout, toIntervalsText } from '../domain/workout'
 import { planWeek } from '../domain/planner'
 import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
@@ -395,4 +396,30 @@ export async function givePaceFeedback(sessionId: string, fb: PaceFeedback, toda
   const prefs = await getSessionPrefs(database)
   await setSetting(KEYS.prefs, { ...prefs, easyOffset: offsetAfterFeedback(prefs.easyOffset, fb) }, database)
   return regenerate('Retour sur les allures', today, database, { force: 'auto' })
+}
+
+/* ---------- Ajustements rapides ---------- */
+
+/** « Je n'ai que X min » : la séance est raccourcie (échauffement guidé et étirements conservés). */
+export async function shortenSession(id: string, minutes: number, today: ISODate, database: CoachDB = db) {
+  const s = await database.sessions.get(id)
+  if (!s?.workout || minutes >= s.durationMin) return
+  let w = s.workout
+  // On réduit le bloc principal jusqu'à tenir dans le temps disponible.
+  for (let f = 0.9; f >= 0.3 && estimateDurationSec(w) / 60 > minutes; f -= 0.1) w = scaleWorkout(s.workout, f)
+  await userEdit(id, { workout: w, workoutText: toIntervalsText(w), durationMin: Math.round(estimateDurationSec(w) / 60), reasons: [...s.reasons, `Raccourcie par toi : ${minutes} min disponibles.`] }, `Séance raccourcie par toi (${minutes} min disponibles)`, today, database)
+}
+
+/** Échange deux séances de jour (les deux deviennent « choisies par toi »). */
+export async function swapSessions(idA: string, idB: string, today: ISODate, database: CoachDB = db) {
+  const [a, b] = await database.sessions.bulkGet([idA, idB])
+  if (!a || !b) return
+  const before = [a, b]
+  const after = [
+    { ...a, date: b.date, locked: true, origin: 'moi' as const, sync: a.sync.status === 'sent' ? { ...a.sync, status: 'outdated' as const } : a.sync },
+    { ...b, date: a.date, locked: true, origin: 'moi' as const, sync: b.sync.status === 'sent' ? { ...b.sync, status: 'outdated' as const } : b.sync },
+  ]
+  await database.sessions.bulkPut(after)
+  await database.planVersions.add({ createdAt: new Date().toISOString(), cause: 'Séances échangées par toi', causes: ['Séances échangées par toi.'], changes: diffSessions(before, after), before, after, status: 'applied' })
+  await regenerate('Réorganisation après ton échange', today, database, { force: 'auto' })
 }

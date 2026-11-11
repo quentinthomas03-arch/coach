@@ -5,6 +5,8 @@ import type { LevelDecision } from './reprise'
 import type { TabacStatus } from './tabac'
 import { ZONE_LABEL, type FragileZone } from './routines'
 import type { NoteInsight } from './notes'
+import type { RunAnalysis } from './runAnalysis'
+import { STATUS_TEXT, type TrainingStatus } from './fitnessModel'
 
 /**
  * LA VOIX DU COACH.
@@ -22,7 +24,10 @@ export interface CoachMessage {
   kind: MessageKind
   text: string
   /** Action proposée en 1 tap (ex. ajouter une zone fragile). */
-  action?: { label: string; type: 'add-zone'; zone: FragileZone } | { label: string; type: 'link'; to: string }
+  action?:
+    | { label: string; type: 'add-zone'; zone: FragileZone }
+    | { label: string; type: 'link'; to: string }
+    | { label: string; type: 'pace-feedback'; sessionId: string; fb: 'trop-lent' | 'trop-rapide' }
 }
 
 /** Zones du check du matin → zones fragiles. */
@@ -66,6 +71,10 @@ export interface CoachContext {
   noPaceRef?: boolean
   /** Profil resté sur les valeurs par défaut de l'accueil. */
   profileUnchecked?: boolean
+  /** Analyses automatiques des sorties récentes (2 derniers jours). */
+  runAnalyses?: (RunAnalysis & { sessionId?: string; title?: string })[]
+  /** Statut d'entraînement (condition / fatigue). */
+  trainingStatus?: TrainingStatus
 }
 
 type Variants = Record<Tone, string>
@@ -132,6 +141,22 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
         cash: `${why[0].toUpperCase() + why.slice(1)} depuis 3 semaines. Je coupe une séance. Pas négociable : récupère.`,
       }, tone),
     )
+  }
+
+  // 1 quinquies. Statut d'entraînement inquiétant.
+  if (ctx.trainingStatus === 'surcharge') out.push({ rule: 'statut-surcharge', kind: 'alerte', text: STATUS_TEXT.surcharge })
+  if (ctx.trainingStatus === 'desentrainement' && !ctx.paused) out.push({ rule: 'statut-desentrainement', kind: 'info', text: `${STATUS_TEXT.desentrainement} Une petite sortie facile suffit à relancer la machine.` })
+
+  // 1 sexies. Analyse automatique des sorties récentes.
+  for (const a of ctx.runAnalyses ?? []) {
+    if (a.verdict === 'inconnu') continue
+    const head = a.title ? `${a.title} : ` : 'Ta sortie : '
+    out.push({
+      rule: `analyse-${a.activityId}`,
+      kind: a.verdict === 'dans-la-cible' ? 'bravo' : 'recadrage',
+      text: head + a.text,
+      action: a.suggest && a.sessionId ? { label: a.suggest === 'trop-rapide' ? 'Ralentir mes allures de 10 s/km' : 'Accélérer mes allures de 10 s/km', type: 'pace-feedback', sessionId: a.sessionId, fb: a.suggest } : undefined,
+    })
   }
 
   // 2. Sorties manquées.

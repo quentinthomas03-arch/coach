@@ -33,7 +33,14 @@ export function sleepScore(hours: number): number {
   return 75 + (hours - 7) * 25
 }
 
-export function computeReadiness(c: MorningCheckin, w?: Wellness, restingHrBaseline?: number): Readiness {
+export interface PersonalContext {
+  /** Sommeil moyen des 2 dernières semaines (h). */
+  sleepBaseline?: number
+  /** Heures de récupération restantes après la dernière séance. */
+  recoveryLeftH?: number
+}
+
+export function computeReadiness(c: MorningCheckin, w?: Wellness, restingHrBaseline?: number, ctx: PersonalContext = {}): Readiness {
   const reasons: string[] = []
   const parts: [number, number][] = [
     [scale5(c.physique), 35],
@@ -54,6 +61,15 @@ export function computeReadiness(c: MorningCheckin, w?: Wellness, restingHrBasel
   if (w?.restingHr != null && restingHrBaseline != null && w.restingHr - restingHrBaseline >= 5) {
     score -= 10
     reasons.push(`FC de repos élevée (${w.restingHr} bpm, ta moyenne : ${Math.round(restingHrBaseline)}).`)
+  }
+  // Par rapport à TA normale (comme Whoop / Oura), pas à un seuil générique.
+  if (w?.sleepHours != null && ctx.sleepBaseline != null && w.sleepHours < ctx.sleepBaseline - 1) {
+    score -= 8
+    reasons.push(`Nuit plus courte que d’habitude (${w.sleepHours.toFixed(1).replace('.', ',')} h contre ${ctx.sleepBaseline.toFixed(1).replace('.', ',')} h en moyenne).`)
+  }
+  if (ctx.recoveryLeftH != null && ctx.recoveryLeftH >= 12) {
+    score -= 10
+    reasons.push(`Encore ~${ctx.recoveryLeftH} h de récupération après ta dernière séance.`)
   }
   if (c.alcool === '1-2') {
     score -= 5

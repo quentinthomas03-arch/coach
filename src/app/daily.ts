@@ -16,7 +16,12 @@ import type { FragileZone } from '../domain/routines'
 import { isPaused } from '../domain/pause'
 import { detectOverload } from '../domain/overload'
 import { analyzeNote } from '../domain/notes'
-import { estimateFitness, type Performance } from '../domain/fitness'
+import { estimateFitness, hrMaxOf, type Performance } from '../domain/fitness'
+import { fitnessSeries, recoveryLeft, trainingStatus, type FitnessPoint, type TrainingStatus } from '../domain/fitnessModel'
+import { analyzeRun } from '../domain/runAnalysis'
+import { RUN_TYPES } from '../domain/activities'
+import { regularStreak } from '../domain/streak'
+import { mondayOf } from '../domain/dates'
 import { avgSleep, bedtime } from '../domain/sleep'
 
 /** Routine à l'ouverture de l'appli : bilan hebdo, recalcul, envoi montre. */
@@ -50,6 +55,12 @@ export interface TodayView {
   awaitingRpe: Activity[]
   load: LoadStatus
   pause?: import('../domain/pause').Pause
+  status: TrainingStatus
+  recoveryLeftH: number
+  streak: number
+  week: { done: number; planned: number }
+  sleepLastNight?: number
+  series: FitnessPoint[]
   /** Heure de coucher conseillée ce soir (si séance clé demain ou sommeil court). */
   bedtimeTonight?: { time: string; why: string }
 }
@@ -65,7 +76,24 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   ])
   const checkin = checkins.find((c) => c.date === today)
   const rhr = wellness30.map((w: Wellness) => w.restingHr).filter((x): x is number => x != null)
-  const readiness = checkin ? computeReadiness(checkin, wellnessToday, rhr.length >= 5 ? rhr.reduce((a, b) => a + b, 0) / rhr.length : undefined) : undefined
+  // Charge, condition, récupération (calculées une fois pour la forme du jour et le coach).
+  const [acts70, sess70, fb70] = await Promise.all([
+    db.activities.where('date').between(addDays(today, -70), today, true, true).toArray(),
+    db.sessions.where('date').between(addDays(today, -70), today, true, true).toArray(),
+    db.feedback.where('date').between(addDays(today, -70), today, true, true).toArray(),
+  ])
+  const entries70 = buildLoadEntries(acts70, sess70, fb70)
+  const series = fitnessSeries(entries70, addDays(today, -56), today)
+  const status = trainingStatus(series, entries70, today)
+  const recoveryLeftH = recoveryLeft(
+    entries70.filter((e) => e.date >= addDays(today, -3) && e.date <= today).map((e) => ({ endAt: new Date(`${e.date}T18:30:00`), minutes: e.minutes, rpe: e.rpe })),
+    new Date(),
+  )
+  const sleeps = wellness30.filter((w) => w.date < today && w.date >= addDays(today, -14)).map((w) => w.sleepHours).filter((x): x is number => x != null)
+  const sleepBaseline = sleeps.length >= 5 ? sleeps.reduce((a, b) => a + b, 0) / sleeps.length : undefined
+  const readiness = checkin
+    ? computeReadiness(checkin, wellnessToday, rhr.length >= 5 ? rhr.reduce((a, b) => a + b, 0) / rhr.length : undefined, { sleepBaseline, recoveryLeftH })
+    : undefined
   const todaySessions = sessions.filter((s) => s.date === today && s.status !== 'skipped').sort((a, b) => (a.kind === 'renfo' ? 1 : b.kind === 'renfo' ? -1 : 0))
   const dismissed = (await getSetting<string[]>(`${KEYS.dismissedProposal}.${today}`)) ?? []
   const proposals = readiness
@@ -97,7 +125,16 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
   const profile = await db.profile.get('me')
   const noPaceRef = estimateFitness((await getSetting<Performance[]>(KEYS.perfs)) ?? [], today).confidence === 'inconnue'
   const profileUnchecked = !!profile && profile.heightCm === 170 && profile.weightKg === 70 && profile.birthYear === 1990
-  const messages = cfg ? coachMessages({ noPaceRef, profileUnchecked, noteInsights, sleepAvg, overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
+  const prof = await db.profile.get('me')
+  const hrMax = hrMaxOf(prof?.hrMax, prof ? new Date(today).getFullYear() - prof.birthYear : 35)
+  const runAnalyses = acts70
+    .filter((a) => a.date >= addDays(today, -2) && RUN_TYPES.has(a.type))
+    .map((a) => {
+      const s = sess70.find((x) => x.id === a.matchedSessionId)
+      return { ...analyzeRun(a, s, hrMax), sessionId: s?.id, title: s?.title }
+    })
+    .filter((r) => !sess70.find((x) => x.id === r.sessionId)?.paceFeedback)
+  const messages = cfg ? coachMessages({ runAnalyses, trainingStatus: status, noPaceRef, profileUnchecked, noteInsights, sleepAvg, overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []
   return {
     today,
     sessions,
@@ -112,6 +149,16 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     awaitingRpe: await activitiesAwaitingRpe(today),
     load,
     pause: paused ? cfg?.pause : undefined,
+    status,
+    recoveryLeftH,
+    streak: regularStreak(await db.sessions.where('date').between(addDays(today, -7 * 53), today, true, true).toArray(), today),
+    week: (() => {
+      const ws = mondayOf(today)
+      const wk = sessions.filter((s) => s.date >= ws && s.date < addDays(ws, 7) && s.kind !== 'repos' && s.status !== 'skipped')
+      return { done: wk.filter((s) => s.status === 'done').length, planned: wk.length }
+    })(),
+    sleepLastNight: wellnessToday?.sleepHours,
+    series,
     bedtimeTonight: (() => {
       const tomorrowKey = sessions.find((s) => s.date === addDays(today, 1) && s.key && s.status === 'planned')
       if (!tomorrowKey && !(sleepAvg != null && sleepAvg < 6.5)) return undefined

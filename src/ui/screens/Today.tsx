@@ -14,6 +14,7 @@ import { useDbQuery as useResults } from '../useDbQuery'
 import { nutritionDay } from '../../app/nutrition'
 import { WaterButtons } from './Nutrition'
 import { Gauge } from '../components/Segmented'
+import { Rings, type Ring } from '../components/Rings'
 import { activityLabel } from '../../domain/activities'
 import { syncToWatch } from '../../app/sync'
 import { formatLongFr, todayISO } from '../../domain/dates'
@@ -47,6 +48,11 @@ function Messages({ list, today }: { list: CoachMessage[]; today: string }) {
           </p>
           {m.action?.type === 'add-zone' && (
             <button className="btn-secondary w-full mt-2" onClick={() => m.action?.type === 'add-zone' && addFragileZone(m.action.zone, today).then(() => syncToWatch(today))}>
+              {m.action.label}
+            </button>
+          )}
+          {m.action?.type === 'pace-feedback' && (
+            <button className="btn-secondary w-full mt-2" onClick={() => m.action?.type === 'pace-feedback' && givePaceFeedback(m.action.sessionId, m.action.fb, today).then(() => syncToWatch(today))}>
               {m.action.label}
             </button>
           )}
@@ -377,6 +383,19 @@ function NutritionCard({ today }: { today: string }) {
   )
 }
 
+const STATUS_LABEL = { productif: '📈 Productif', maintien: '➡️ Maintien', surcharge: '⚠️ Surcharge', recuperation: '🔋 Récupération', desentrainement: '📉 Désentraînement', demarrage: '' } as const
+
+function TodayRings({ view }: { view: TodayView }) {
+  const n = useResults(() => nutritionDay(view.today), [view.today])
+  const rings: Ring[] = [
+    { label: 'Séances', value: view.week.done, target: Math.max(1, view.week.planned), color: '--c-course', text: `${view.week.done}/${view.week.planned} sem.` },
+    { label: 'Protéines', value: n?.eaten.protein ?? 0, target: n?.targets?.protein ?? 120, color: '--c-nutri', text: `${n?.eaten.protein ?? 0}/${n?.targets?.protein ?? '—'} g` },
+    { label: 'Eau', value: n?.waterMl ?? 0, target: n?.hydration.ml ?? 2000, color: '--c-eau', text: `${((n?.waterMl ?? 0) / 1000).toFixed(1).replace('.', ',')} L` },
+    { label: 'Sommeil', value: view.sleepLastNight ?? 0, target: 7.5, color: '--c-sommeil', text: view.sleepLastNight != null ? `${view.sleepLastNight.toFixed(1).replace('.', ',')} h` : '—' },
+  ]
+  return <Rings rings={rings} />
+}
+
 function Results({ today }: { today: string }) {
   const list = useResults(() => resultsAwaited(today), [today])
   return <>{(list ?? []).map((s) => <ResultCard key={s.id} s={s} today={today} />)}</>
@@ -427,6 +446,12 @@ export function Today() {
         ) : (
           <p className="mt-1 text-sm">Ton check du matin en 15 secondes, et le coach s’occupe du reste.</p>
         )}
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {view.streak > 0 && <span className="rounded-full bg-surface/80 px-2.5 py-1 text-xs font-semibold">🔥 {view.streak} semaine{view.streak > 1 ? 's' : ''} régulière{view.streak > 1 ? 's' : ''}</span>}
+          {view.status !== 'demarrage' && <span className="rounded-full bg-surface/80 px-2.5 py-1 text-xs font-semibold">{STATUS_LABEL[view.status]}</span>}
+          {view.recoveryLeftH > 0 && <span className="rounded-full bg-surface/80 px-2.5 py-1 text-xs font-semibold">⏳ Récup : encore ~{view.recoveryLeftH} h</span>}
+        </div>
+        <TodayRings view={view} />
       </header>
       {view.pause && (
         <Link to="/plan" className="block rounded-card border border-warn/40 bg-warn/10 px-4 py-3">

@@ -33,6 +33,12 @@ describe('forme du jour', () => {
     expect(b.score).toBe(a.score - 15)
     expect(a.reasons.join(' ')).toMatch(/FC de repos/)
   })
+  it('par rapport à ma normale : nuit courte pour moi, récupération en cours', () => {
+    const a = computeReadiness(base, { date: base.date, sleepHours: 6.5 })
+    const b = computeReadiness(base, { date: base.date, sleepHours: 6.5 }, undefined, { sleepBaseline: 7.8, recoveryLeftH: 20 })
+    expect(b.score).toBe(a.score - 18)
+    expect(b.reasons.join(' ')).toMatch(/plus courte que d’habitude.*récupération/)
+  })
   it('douleur modérée = rouge, gêne légère = simple vigilance', () => {
     expect(computeReadiness({ ...base, douleur: { zone: 'genou', intensite: 2 } })).toMatchObject({ color: 'rouge', pain: true })
     const light = computeReadiness({ ...base, douleur: { zone: 'mollet', intensite: 1 } })

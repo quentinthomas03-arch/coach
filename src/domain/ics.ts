@@ -18,7 +18,7 @@ export interface IcsOptions {
 
 export const DEFAULT_TIMES: Record<Slot, string> = { matin: '09:00', midi: '12:15', soir: '18:30' }
 
-const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
+const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
 
 /** Plie les lignes à 75 octets (norme iCalendar). */
 function fold(line: string): string {

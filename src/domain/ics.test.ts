@@ -15,7 +15,7 @@ describe('agenda .ics', () => {
     expect(ics.match(/TRIGGER:-PT60M/g)).toHaveLength(2)
   })
   it('échappement et lignes de 75 octets au plus', () => {
-    expect(ics).toContain('Sortie longue\; douce\\, facile')
+    expect(ics).toContain('Sortie longue\\; douce\\, facile')
     for (const l of ics.split('\r\n')) expect(new TextEncoder().encode(l).length).toBeLessThanOrEqual(75)
     expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true)
   })

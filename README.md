@@ -35,6 +35,9 @@ Le plan se recalcule tout seul à chaque ouverture de l’appli : import des sé
 - **Notes libres** (Aujourd’hui › « + Une note pour le coach ») : le coach repère douleurs, fatigue et bonnes sensations par mots-clés, et réagit.
 - **Tabac × course** : FC de repos avant et depuis l’arrêt, sur la page Tabac.
 - **Bilan de la semaine** (le dimanche sur Aujourd’hui, et dans Suivi) : ce qui a été fait, l’avis du coach, la semaine à venir, partageable.
+- **Analyse tour par tour** : chaque étape de la séance (échauffement, fractions, récupérations) est comparée à sa fourchette d’allure, à partir des tours de la montre.
+- **Bilan de cycle** (Plan) : toutes les 4 semaines, avec un contrôle aérobie de 20 min à FC zone 2 en semaine allégée pour mesurer tes progrès d’endurance.
+- **Courses à venir** (Plan) : quand chaque distance devient réaliste pour toi, recherches de courses dans ton département, courses envisagées avec bilan en un tap et « Lancer comme objectif ».
 - **Eau sans contrainte** : question « Hier, tu as bu ? » dans le check du matin, gourde en 1 tap, ou eau saisie sur la montre (si Intervals.icu la transmet).
 
 ## Sommaire

@@ -51,6 +51,10 @@ Tout est du code déterministe et testé, sans IA. Chaque décision est expliqu�
 | Anneaux du jour, série de régularité | Apple Fitness, Nike Run Club | Séances de la semaine, protéines, eau, sommeil. Série = semaines consécutives avec toutes les séances sauf une au maximum. |
 | Chronos prédits dans le temps | Garmin | Prédiction 10 km recalculée à chaque performance. |
 | Saisie rapide de calories | MyFitnessPal | Pour un repas que tu n'as pas envie de détailler. |
+| Analyse tour par tour | Kiprun, Runna | Les tours de la montre (lus sur Intervals.icu) sont alignés sur les étapes de la séance. Chaque étape est jugée à sa fourchette d'allure, avec 8 s/km de tolérance : « dans la fourchette », « trop vite », « trop lent ». Si les tours ne sont pas disponibles, l'analyse se fait sur la moyenne. |
+| Contrôle aérobie | Méthode MAF, Polar | En semaine allégée (toutes les 4 semaines), la première endurance devient un contrôle : 20 min à FC zone 2 sur terrain plat. Le coach compare l'allure à FC égale d'un cycle à l'autre (environ 4 s/km par battement d'écart). |
+| Bilan de cycle | TrainingPeaks, Runna | Toutes les 4 semaines : séances faites sur prévues, volume, évolution du niveau, résultat du contrôle, douleurs. Verdict réussi / correct / difficile, avec l'avis du coach. Visible dans Plan. |
+| Courses à venir | Kikourou, calendrier FFA | Pour 5 km, 10 km, semi et marathon : date au plus tôt réaliste et chrono raisonnable à cette date, selon le même bilan qu'un objectif. Recherches toutes faites pour ton département (position → API adresse du gouvernement, coordonnées arrondies à 1 km). Il n'existe pas de base ouverte des courses interrogeable depuis l'iPhone : tu notes les courses qui te tentent, et le coach fait leur bilan en un tap, puis peut les lancer comme objectif. |
 
 ## Nutrition
 - **Besoins du jour** : métabolisme de base (Mifflin-St Jeor) × activité, plus les séances. Les calories des séances viennent de la montre quand elle les fournit (nettes du métabolisme de base), sinon d'une estimation.

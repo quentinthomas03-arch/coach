@@ -15,6 +15,7 @@ import { DISTANCE_LABEL, DISTANCES, formatTime, parseTime, predictTimeSec, train
 import { getLevel, MAX_REPRISE_LEVEL } from '../../domain/reprise'
 import { Choice } from '../components/Choice'
 import { useDbQuery } from '../useDbQuery'
+import { RacesCard } from './RacesCard'
 import { PageTitle } from '../Layout'
 
 const PHASE_COLOR: Record<Phase, string> = {
@@ -31,7 +32,7 @@ const VERDICT = {
 }
 const pace = (s: number) => `${formatTime(s)}/km`
 
-function AssessmentCard({ a }: { a: GoalAssessment }) {
+export function AssessmentCard({ a }: { a: GoalAssessment }) {
   const v = VERDICT[a.verdict]
   return (
     <div className="space-y-2">
@@ -485,6 +486,8 @@ export function PlanScreen() {
           </button>
         )}
       </section>
+
+      <RacesCard hasGoal={!!goal} />
 
       <CycleReviews />
 

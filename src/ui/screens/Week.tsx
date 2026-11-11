@@ -14,6 +14,7 @@ import { Choice } from '../components/Choice'
 import { LockTag, StatusTag, WatchBadge, WorkoutSteps, sessionSummary } from '../components/SessionBits'
 import { DAY_NAMES, WeekEditor } from '../components/WeekEditor'
 import { PageTitle } from '../Layout'
+import { CalendarCard } from '../components/CalendarCard'
 
 const afterChange = (today: string) => syncToWatch(today).catch(() => undefined)
 
@@ -294,6 +295,8 @@ export function Week() {
           </ul>
         </section>
       )}
+
+      <CalendarCard />
 
       {adding ? <AddSession weekStart={weekStart} today={today} onClose={() => setAdding(false)} /> : (
         <button className="btn-secondary w-full" onClick={() => setAdding(true)}>

@@ -2,9 +2,11 @@ import type { FoodItem, FoodLogEntry, ISODate } from '../data/types'
 import { db, getSetting, setSetting, type CoachDB } from '../data/db'
 import { addDays } from '../domain/dates'
 import { forGrams } from '../domain/foodSearch'
-import { dayTargets, fuelingTips, hydrationTarget, waterOfDay, WATER_ESTIMATE_ML, type ActivityLevel, type DaySession, type DayTargets, type FuelingTips, type HydrationTarget, type WeightGoal } from '../domain/nutrition'
+import { bmr, dayType, dayTargets, fuelingTips, hydrationTarget, waterOfDay, WATER_ESTIMATE_ML, type ActivityLevel, type DaySession, type DayTargets, type FuelingTips, type HydrationTarget, type WeightGoal } from '../domain/nutrition'
 import { RUN_TYPES } from '../domain/activities'
 import { dishFoods } from '../domain/dishes'
+import { mealBudgets, netSessionKcal, plateFor, type MealBudget, type MealId, type Plate, type SessionSlot } from '../domain/mealPlan'
+import { runningMinutes } from '../domain/planInputs'
 import { currentPosition, fetchTodayMax } from '../integrations/weather'
 
 export type Meal = FoodLogEntry['meal']
@@ -176,6 +178,12 @@ export interface NutritionDay {
   tips?: FuelingTips
   sessionsLabel: string
   missingProfile: boolean
+  /** Objectif et consommé par repas. */
+  budgets: MealBudget[]
+  /** Assiette conseillée pour les repas principaux. */
+  plates: { dejeuner: Plate; diner: Plate }
+  /** Dépense des séances mesurée par la montre (sinon estimée). */
+  measuredKcal: boolean
 }
 
 export async function nutritionDay(date: ISODate, tmaxC?: number, database: CoachDB = db): Promise<NutritionDay> {
@@ -192,23 +200,35 @@ export async function nutritionDay(date: ISODate, tmaxC?: number, database: Coac
   const manual = water.filter((w) => w.source !== 'check').reduce((a, w) => a + w.ml, 0)
   const check = water.find((w) => w.source === 'check')?.ml
   const w = waterOfDay(manual, check, wellness?.hydrationMl)
-  // Séances : l'activité réelle si elle existe, sinon la séance prévue.
+  const weightKg = metrics?.weightKg ?? profile?.weightKg
+  const age = profile ? new Date(date).getFullYear() - profile.birthYear : 35
+  const bmrNow = profile && profile.heightCm && weightKg ? bmr({ sex: profile.sex, age, heightCm: profile.heightCm, weightKg }) : 1600
+  // Séances : l'activité réelle si elle existe (calories de la montre), sinon la séance prévue.
   const day: DaySession[] = []
   for (const s of sessions) {
     const a = acts.find((x) => x.matchedSessionId === s.id)
     const kind: DaySession['kind'] = s.kind === 'renfo' ? 'renfo' : s.kind === 'marche-course' ? 'marche-course' : 'course'
-    day.push({ kind, minutes: a ? Math.round(a.durationSec / 60) : s.durationMin, distanceKm: a?.distanceM ? a.distanceM / 1000 : undefined, rpe: s.key ? 7 : undefined })
+    const minutes = a ? Math.round(a.durationSec / 60) : s.kind === 'renfo' ? s.durationMin : runningMinutes(s)
+    day.push({ kind, minutes, distanceKm: a?.distanceM ? a.distanceM / 1000 : undefined, rpe: s.key ? 7 : undefined, kcal: a?.calories ? netSessionKcal(a.calories, minutes, bmrNow) : undefined })
   }
   for (const a of acts.filter((x) => !x.matchedSessionId && RUN_TYPES.has(x.type))) {
-    day.push({ kind: 'course', minutes: Math.round(a.durationSec / 60), distanceKm: a.distanceM ? a.distanceM / 1000 : undefined, rpe: a.rpe })
+    const minutes = Math.round(a.durationSec / 60)
+    day.push({ kind: 'course', minutes, distanceKm: a.distanceM ? a.distanceM / 1000 : undefined, rpe: a.rpe, kcal: a.calories ? netSessionKcal(a.calories, minutes, bmrNow) : undefined })
   }
-  const weightKg = metrics?.weightKg ?? profile?.weightKg
   const missingProfile = !profile || !profile.heightCm || !weightKg
   const targets = !missingProfile
-    ? dayTargets({ sex: profile!.sex, age: new Date(date).getFullYear() - profile!.birthYear, heightCm: profile!.heightCm!, weightKg: weightKg!, activity: cfg.activity, goal: cfg.goal }, day)
+    ? dayTargets({ sex: profile!.sex, age, heightCm: profile!.heightCm!, weightKg: weightKg!, activity: cfg.activity, goal: cfg.goal }, day)
     : undefined
   const runMin = day.reduce((a, s) => a + s.minutes, 0)
   const main = day.filter((s) => s.kind !== 'renfo').sort((a, b) => b.minutes - a.minutes)[0] ?? day[0]
+  // Répartition par repas et assiette conseillée (séance du jour, lendemain, créneau).
+  const tomorrowSessions = await database.sessions.where('date').equals(addDays(date, 1)).filter((s) => s.status !== 'skipped' && s.kind !== 'repos').toArray()
+  const tomorrowType = dayType(tomorrowSessions.map((s): DaySession => ({ kind: s.kind === 'renfo' ? 'renfo' : 'course', minutes: s.durationMin, rpe: s.key ? 7 : undefined })))
+  const tmpl = await database.availability.get('template')
+  const slot: SessionSlot = tmpl?.days.find((d) => d.weekday === (new Date(date + 'T12:00:00').getDay() + 6) % 7)?.slot ?? 'soir'
+  const eatenByMeal: Partial<Record<MealId, number>> = {}
+  for (const e of entries) eatenByMeal[e.meal] = (eatenByMeal[e.meal] ?? 0) + e.kcal
+  const today = targets?.dayType ?? 'repos'
   return {
     targets,
     hydration: hydrationTarget(weightKg ?? 70, runMin, tmaxC),
@@ -220,6 +240,9 @@ export async function nutritionDay(date: ISODate, tmaxC?: number, database: Coac
     tips: main ? fuelingTips(main.minutes, (main.rpe ?? 0) >= 7, main.kind === 'renfo' ? 'renfo' : 'course', profile?.foodDislikes ?? []) : undefined,
     sessionsLabel: day.length ? day.map((s) => `${s.kind === 'renfo' ? 'renfo' : 'course'} ${s.minutes} min`).join(' + ') : 'repos',
     missingProfile,
+    budgets: targets ? mealBudgets(targets.kcal, eatenByMeal, day.length > 0, slot) : [],
+    plates: { dejeuner: plateFor('dejeuner', today, tomorrowType, slot), diner: plateFor('diner', today, tomorrowType, slot) },
+    measuredKcal: day.some((s) => s.kcal != null),
   }
 }
 

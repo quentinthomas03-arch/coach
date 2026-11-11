@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { buildMenu, clearBasket, getBasket, getMenu, logRecipe, nutrientTable, setMeal, thisMonday, toggleBasket } from '../../app/menu'
+import { buildMenu, clearBasket, getBasket, getMenu, logRecipe, nutrientTable, scaleFor, setMeal, thisMonday, toggleBasket } from '../../app/menu'
 import { MEALS, type Meal } from '../../app/nutrition'
 import { addDays, formatLongFr, parseISODate, todayISO } from '../../domain/dates'
 import { basketIdeas, formatQty, recipeNutrients, type NutrientTable } from '../../domain/menu'
@@ -10,10 +10,12 @@ import { db } from '../../data/db'
 
 const day2 = (d: string) => formatLongFr(d).split(' ').slice(0, 2).join(' ')
 
-function RecipeSheet({ r, table, onClose, onChoose, date }: { r: Recipe; table?: NutrientTable; onClose: () => void; onChoose?: () => void; date?: string }) {
+function RecipeSheet({ r, table, onClose, onChoose, date, slot }: { r: Recipe; table?: NutrientTable; onClose: () => void; onChoose?: () => void; date?: string; slot?: Meal }) {
   const n = table ? recipeNutrients(r, table) : undefined
-  const [meal, setMealSlot] = useState<Meal>('dejeuner')
+  const [meal, setMealSlot] = useState<Meal>(slot ?? 'dejeuner')
   const [done, setDone] = useState(false)
+  const sc = useDbQuery(() => (date ? scaleFor(r.id, date, meal) : Promise.resolve(undefined)), [r.id, date, meal])
+  const f = sc?.factor ?? 1
   return (
     <div className="fixed inset-0 z-30 bg-black/40 flex items-end" onClick={onClose}>
       <div role="dialog" aria-label={r.name} className="w-full bg-surface rounded-t-[24px] p-4 pb-[max(env(safe-area-inset-bottom),16px)] max-h-[88dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -24,7 +26,13 @@ function RecipeSheet({ r, table, onClose, onChoose, date }: { r: Recipe; table?:
         </p>
         {n && (
           <p className="num font-semibold mt-2">
-            Par portion : {n.kcal} kcal · P {n.protein} g · G {n.carbs} g · L {n.fat} g
+            {f !== 1 ? `Ta portion (×${String(f).replace('.', ',')}) : ` : 'Par portion : '}
+            {Math.round(n.kcal * f)} kcal · P {Math.round(n.protein * f)} g · G {Math.round(n.carbs * f)} g · L {Math.round(n.fat * f)} g
+          </p>
+        )}
+        {sc?.target && (
+          <p className="text-xs text-muted">
+            Dosée pour ton {MEALS.find((m) => m.id === meal)?.label.toLowerCase()} (~{sc.target} kcal prévues ce jour-là).
           </p>
         )}
         <h3 className="font-semibold mt-3">Ingrédients{r.portions > 1 ? ` (pour ${r.portions})` : ''}</h3>
@@ -32,7 +40,7 @@ function RecipeSheet({ r, table, onClose, onChoose, date }: { r: Recipe; table?:
           {r.ingredients.map((i) => (
             <li key={i.name} className="flex justify-between border-t border-line py-1.5">
               <span>{i.name}</span>
-              <span className="num text-muted">{formatQty(Math.round((i.g * r.portions) / 5) * 5)}</span>
+              <span className="num text-muted">{formatQty(Math.round((i.g * (r.portions > 1 ? r.portions : f)) / 5) * 5)}</span>
             </li>
           ))}
         </ul>
@@ -42,9 +50,9 @@ function RecipeSheet({ r, table, onClose, onChoose, date }: { r: Recipe; table?:
             <li key={s}>{s}</li>
           ))}
         </ol>
-        {date && (
+        {date && date <= todayISO() && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium">Ajouter une portion au journal :</p>
+            <p className="text-sm font-medium">Ajouter ta portion au journal :</p>
             <div className="grid grid-cols-4 gap-1">
               {MEALS.map((m) => (
                 <button key={m.id} className={`min-h-[44px] rounded-btn border text-xs ${meal === m.id ? 'bg-accent text-on-accent border-transparent' : 'bg-surface2 border-line'}`} onClick={() => setMealSlot(m.id)}>
@@ -52,7 +60,7 @@ function RecipeSheet({ r, table, onClose, onChoose, date }: { r: Recipe; table?:
                 </button>
               ))}
             </div>
-            <button className="btn-primary w-full" disabled={done} onClick={async () => { await logRecipe(r.id, date, meal); setDone(true) }}>
+            <button className="btn-primary w-full" disabled={done} onClick={async () => { await logRecipe(r.id, date, meal, undefined, f); setDone(true) }}>
               {done ? 'Ajouté ✓' : 'Je l’ai mangé'}
             </button>
           </div>
@@ -76,7 +84,7 @@ export function MenuTab() {
   const monday = addDays(thisMonday(today), offset * 7)
   const menu = useDbQuery(() => getMenu(monday), [monday])
   const table = useDbQuery(() => nutrientTable(), [])
-  const [open, setOpen] = useState<{ r: Recipe; date: string } | null>(null)
+  const [open, setOpen] = useState<{ r: Recipe; date: string; slot?: Meal } | null>(null)
   const [swap, setSwap] = useState<{ date: string; slot: 'lunch' | 'dinner' } | null>(null)
 
   return (
@@ -108,7 +116,7 @@ export function MenuTab() {
                 const n = table ? recipeNutrients(r, table) : undefined
                 return (
                   <div key={slot} className="flex items-start gap-2 mt-1.5">
-                    <button className="flex-1 text-left min-h-[44px]" onClick={() => setOpen({ r, date: d.date })}>
+                    <button className="flex-1 text-left min-h-[44px]" onClick={() => setOpen({ r, date: d.date, slot: slot === 'lunch' ? 'dejeuner' : 'diner' })}>
                       <span className="text-xs text-muted">{slot === 'lunch' ? 'Midi' : 'Soir'}{m.locked ? ' · 🔒 choisi par toi' : ''}</span>
                       <span className="block font-semibold leading-snug">
                         {r.name}
@@ -161,7 +169,7 @@ export function MenuTab() {
           </ul>
         </div>
       )}
-      {open && <RecipeSheet r={open.r} table={table} date={open.date <= today ? open.date : undefined} onClose={() => setOpen(null)} />}
+      {open && <RecipeSheet r={open.r} table={table} date={open.date} slot={open.slot} onClose={() => setOpen(null)} />}
     </div>
   )
 }

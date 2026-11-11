@@ -101,7 +101,7 @@ function Journal() {
             <details className="text-sm text-muted">
               <summary className="min-h-[44px] flex items-center font-medium text-ink">Comment c’est calculé</summary>
               <p>
-                Métabolisme de base {t.bmr} kcal (Mifflin-St Jeor) × activité quotidienne + séances {t.exerciseKcal} kcal = {t.tdee} kcal. Protéines ~1,6 g/kg, lipides ≥ 25 %, glucides le reste (repère du jour : {t.carbRangeGkg[0]} à {t.carbRangeGkg[1]} g/kg).
+                Métabolisme de base {t.bmr} kcal (Mifflin-St Jeor) × activité quotidienne + séances {t.exerciseKcal} kcal{day.measuredKcal ? ' (mesurées par ta montre)' : ' (estimées)'} = {t.tdee} kcal. Protéines ~1,6 g/kg, lipides ≥ 25 %, glucides le reste (repère du jour : {t.carbRangeGkg[0]} à {t.carbRangeGkg[1]} g/kg).
               </p>
               {t.notes.map((n) => (
                 <p key={n} className="mt-1">{n}</p>
@@ -146,13 +146,24 @@ function Journal() {
       {MEALS.map((m) => {
         const list = day.entries.filter((e) => e.meal === m.id)
         const kcal = list.reduce((a, e) => a + e.kcal, 0)
+        const budget = day.budgets.find((b) => b.meal === m.id)
+        const plate = m.id === 'dejeuner' ? day.plates.dejeuner : m.id === 'diner' ? day.plates.diner : undefined
         const mineSaved = (saved ?? []).slice(0, 4)
         return (
           <section key={m.id} className="card" aria-label={m.label}>
             <div className="flex items-baseline justify-between">
               <h2 className="font-semibold text-lg">{m.label}</h2>
-              <span className="num text-sm text-muted">{Math.round(kcal)} kcal</span>
+              <span className="num text-sm text-muted">
+                {Math.round(kcal)}
+                {budget ? ` / ~${budget.target}` : ''} kcal
+              </span>
             </div>
+            {plate && date >= today && list.length === 0 && (
+              <p className="text-sm mt-1">
+                <span className="font-semibold">Ton assiette : </span>
+                {plate.text} <span className="text-muted">{plate.examples}</span>
+              </p>
+            )}
             <ul>
               {list.map((e) => (
                 <li key={e.id} className="flex items-center justify-between gap-2 border-t border-line py-2">

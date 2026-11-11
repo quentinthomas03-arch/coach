@@ -30,6 +30,7 @@ export function mapActivity(raw: Record<string, unknown>): Activity | undefined 
     load: num(raw.icu_training_load),
     rpe: rpe != null && rpe >= 1 && rpe <= 10 ? rpe : undefined,
     name: str(raw.name),
+    calories: num(raw.calories),
   }
 }
 

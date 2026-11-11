@@ -46,12 +46,15 @@ export interface DaySession {
   distanceKm?: number
   /** Intensité ressentie 1-10 (ou estimée). */
   rpe?: number
+  /** Dépense nette mesurée par la montre (prioritaire sur l'estimation). */
+  kcal?: number
 }
 
 /** MET nets (au-dessus du repos) par type d'effort. */
 const NET_MET = { 'marche-course': 5, course: 8, renfo: 4 }
 
 export function sessionKcal(s: DaySession, weightKg: number): number {
+  if (s.kcal != null) return s.kcal
   if (s.kind === 'course' && s.distanceKm) return Math.round(s.distanceKm * weightKg)
   const met = NET_MET[s.kind] * (s.rpe && s.rpe >= 7 ? 1.25 : 1)
   return Math.round((met * 3.5 * weightKg * s.minutes) / 200)

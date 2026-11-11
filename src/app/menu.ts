@@ -4,7 +4,8 @@ import { addDays, mondayOf, parseISODate } from '../domain/dates'
 import { planMenu, recipeNutrients, shoppingList, weekDates, type BasketItem, type MenuDay, type NutrientTable } from '../domain/menu'
 import { dayType, type DaySession } from '../domain/nutrition'
 import { RECIPES, recipeById } from '../domain/recipes'
-import { addFood, loadCiqual, type Meal } from './nutrition'
+import { addFood, loadCiqual, nutritionDay, type Meal } from './nutrition'
+import { recipeScale } from '../domain/mealPlan'
 
 const BASKET_KEY = 'basket.items'
 const menuKey = (monday: ISODate) => `menu.${monday}`
@@ -99,13 +100,24 @@ export async function nutrientTable(): Promise<NutrientTable> {
   return table
 }
 
-/** Ajoute une portion de recette au journal (un aliment « recette » réutilisable). */
-export async function logRecipe(recipeId: string, date: ISODate, meal: Meal, database: CoachDB = db) {
+/** Facteur de portion d'une recette pour un repas donné (selon mon budget du jour). */
+export async function scaleFor(recipeId: string, date: ISODate, meal: Meal): Promise<{ factor: number; target?: number; kcal: number }> {
+  const r = recipeById(recipeId)
+  if (!r) return { factor: 1, kcal: 0 }
+  const kcal = recipeNutrients(r, await nutrientTable()).kcal
+  const day = await nutritionDay(date)
+  const target = day.budgets.find((b) => b.meal === meal)?.target
+  return { factor: target ? recipeScale(kcal, target) : 1, target, kcal }
+}
+
+/** Ajoute une portion (dosée pour moi) de recette au journal. */
+export async function logRecipe(recipeId: string, date: ISODate, meal: Meal, database: CoachDB = db, factor?: number) {
   const r = recipeById(recipeId)
   if (!r) return
+  const f = factor ?? (await scaleFor(recipeId, date, meal)).factor
   const n = recipeNutrients(r, await nutrientTable())
-  const grams = Math.round(r.ingredients.reduce((a, i) => a + i.g, 0))
-  const per100 = (x: number) => Math.round((x / grams) * 1000) / 10
+  const grams = Math.round(r.ingredients.reduce((a, i) => a + i.g, 0) * f)
+  const per100 = (x: number) => Math.round(((x * f) / grams) * 1000) / 10
   await addFood(date, meal, { id: `recette-${r.id}`, source: 'perso', name: r.name, kcal: per100(n.kcal), protein: per100(n.protein), carbs: per100(n.carbs), fat: per100(n.fat), group: 'Recette' }, grams, database)
 }
 

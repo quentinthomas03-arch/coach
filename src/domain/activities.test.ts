@@ -9,8 +9,8 @@ const act = (id: string, date: string, type = 'Run', over: Partial<Activity> = {
 
 describe('lecture Intervals.icu', () => {
   it('activité', () => {
-    const a = mapActivity({ id: 'i123', start_date_local: '2026-11-17T18:32:00', type: 'Run', moving_time: 1920, distance: 4800, average_heartrate: 142, icu_training_load: 38, icu_rpe: 5, name: 'Course du soir' })
-    expect(a).toMatchObject({ id: 'i123', date: '2026-11-17', durationSec: 1920, distanceM: 4800, avgHr: 142, load: 38, rpe: 5 })
+    const a = mapActivity({ id: 'i123', start_date_local: '2026-11-17T18:32:00', type: 'Run', moving_time: 1920, distance: 4800, average_heartrate: 142, icu_training_load: 38, icu_rpe: 5, name: 'Course du soir', calories: 420 })
+    expect(a).toMatchObject({ id: 'i123', date: '2026-11-17', durationSec: 1920, distanceM: 4800, avgHr: 142, load: 38, rpe: 5, calories: 420 })
   })
   it('ignore les données incomplètes ou absurdes', () => {
     expect(mapActivity({ type: 'Run' })).toBeUndefined()

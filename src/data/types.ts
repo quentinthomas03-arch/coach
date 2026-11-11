@@ -113,6 +113,8 @@ export interface Activity {
   rpe?: number
   matchedSessionId?: string
   name?: string
+  /** Calories brutes mesurées par la montre. */
+  calories?: number
   raw?: unknown
 }
 

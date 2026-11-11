@@ -20,7 +20,7 @@ import { formatLongFr, todayISO } from '../../domain/dates'
 import type { CoachMessage } from '../../domain/coach'
 import { Scale5 } from '../components/Segmented'
 import { Choice } from '../components/Choice'
-import { LockTag, StatusTag, WatchBadge, sessionSummary } from '../components/SessionBits'
+import { LockTag, StatusTag, WatchBadge, WorkoutSteps, sessionSummary } from '../components/SessionBits'
 
 const ZONES = ['Genou', 'Mollet', 'Tendon d’Achille', 'Cheville', 'Hanche', 'Dos', 'Pied', 'Autre']
 
@@ -166,6 +166,12 @@ function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
       </div>
       <h2 className="display text-2xl leading-tight mt-1">{s.title}</h2>
       <p className="num text-lg font-semibold mt-2">{sessionSummary(s)}</p>
+      {s.kind !== 'renfo' && (
+        <details className="mt-1" open>
+          <summary className="text-sm font-semibold min-h-[40px] flex items-center">Déroulé et allures</summary>
+          <WorkoutSteps s={s} />
+        </details>
+      )}
       <div className="flex gap-3 mt-1">
         <StatusTag s={s} />
         <LockTag s={s} />

@@ -9,6 +9,7 @@ import type { FragileZone } from '../domain/routines'
 import { isPaused, resumeAfterPause, type Pause } from '../domain/pause'
 import { ENGINE_CHANGELOG, ENGINE_VERSION, explainChanges, type PlanInputs } from '../domain/planInputs'
 import { estimateFitness, type Performance } from '../domain/fitness'
+import { sessionPaces } from '../domain/sessionPaces'
 import { detectOverload, OVERLOAD_DAYS, OVERLOAD_VOLUME_FACTOR } from '../domain/overload'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
@@ -96,6 +97,8 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
   let goalKey: string | undefined
   let vdotRef: number | undefined
   const notes: string[] = []
+  const fitnessNow = estimateFitness((await getSetting<Performance[]>(KEYS.perfs, database)) ?? [], today)
+  const paces = sessionPaces(fitnessNow, (cfg.mode ?? 'reprise') === 'reprise')
   const equipment = await getEquipment(database)
   const overload = detectOverload(await database.checkins.where('date').between(addDays(today, -OVERLOAD_DAYS), today, true, true).toArray(), today)
   if (overload.active) notes.push(`Allègement temporaire : ${overload.reasons.join(', ')} ces 3 dernières semaines.`)
@@ -135,6 +138,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       existing,
       ranPreviousSunday: prevSunday.some((s) => isRunSession(s) && s.status !== 'skipped'),
       zones,
+      paces,
       blockedDates: Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => isPaused(cfg.pause, d)),
       mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
       formeBaseMinutes: cfg.formeBaseMinutes && overload.active ? Math.round(cfg.formeBaseMinutes * OVERLOAD_VOLUME_FACTOR) : cfg.formeBaseMinutes,
@@ -146,8 +150,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
     after.push(...plan.sessions.map((s) => mergeSync(s, existing.find((e) => e.id === s.id))))
     notes.push(...plan.notes)
   }
-  const fitness = estimateFitness((await getSetting<Performance[]>(KEYS.perfs, database)) ?? [], today)
-  vdotRef = fitness.vdot != null ? Math.round(fitness.vdot) : undefined
+  vdotRef = fitnessNow.vdot != null ? Math.round(fitnessNow.vdot) : undefined
   const sessionsAll = await database.sessions.where('date').between(addDays(w0, -7), addDays(w0, 14), true, false).toArray()
   const inputs: PlanInputs = {
     engine: ENGINE_VERSION,

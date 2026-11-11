@@ -51,3 +51,32 @@ export function sessionSummary(s: PlannedSession): string {
   }
   return `${Math.round((step.durationSec ?? 0) / 60)} min de course facile`
 }
+
+import { describeWorkout } from '../../domain/sessionPaces'
+
+/** Déroulé de la séance étape par étape, avec les fourchettes d'allure (comme sur la montre). */
+export function WorkoutSteps({ s }: { s: PlannedSession }) {
+  if (!s.workout) return null
+  const lines = describeWorkout(s.workout)
+  let last = ''
+  return (
+    <ol className="mt-2 space-y-1.5 text-[15px]">
+      {lines.map((l, i) => {
+        const head = l.section !== last ? l.section : ''
+        last = l.section
+        return (
+          <li key={i}>
+            {head && <p className="text-xs font-semibold uppercase tracking-wide text-muted mt-2">{head}</p>}
+            <div className="flex items-baseline justify-between gap-3">
+              <span>
+                {l.repeat ? <strong className="num">{l.repeat} × </strong> : null}
+                {l.repeat ? `(${l.text})` : l.text}
+              </span>
+              {l.target && <span className="num text-sm font-semibold text-right shrink-0">{l.target}</span>}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}

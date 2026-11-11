@@ -10,7 +10,7 @@ import { repriseWorkout } from '../../domain/reprise'
 import { withRoutines, type FragileZone } from '../../domain/routines'
 import { estimateDurationSec, toIntervalsText } from '../../domain/workout'
 import { Choice } from '../components/Choice'
-import { LockTag, StatusTag, WatchBadge, sessionSummary } from '../components/SessionBits'
+import { LockTag, StatusTag, WatchBadge, WorkoutSteps, sessionSummary } from '../components/SessionBits'
 import { DAY_NAMES, WeekEditor } from '../components/WeekEditor'
 import { PageTitle } from '../Layout'
 
@@ -38,6 +38,7 @@ function SessionSheet({ s, weekStart, today, onClose }: { s: PlannedSession; wee
         <p className="font-semibold mt-1">
           {sessionSummary(s)} · {s.durationMin} min
         </p>
+        {s.kind !== 'renfo' && <WorkoutSteps s={s} />}
         <ul className="text-sm text-muted list-disc pl-5 mt-2 space-y-1">
           {s.reasons.map((r) => (
             <li key={r}>{r}</li>

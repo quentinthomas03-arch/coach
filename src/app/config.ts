@@ -3,6 +3,7 @@ import { db, getSetting, setSetting, type CoachDB } from '../data/db'
 import type { Tone } from '../domain/coach'
 import type { TabacSettings } from '../domain/tabac'
 import type { Pause } from '../domain/pause'
+import { DEFAULT_PREFS, type SessionPrefs } from '../domain/sessionPrefs'
 
 /** Réglages du plan, modifiables à tout moment dans l'appli. */
 export interface PlanConfig {
@@ -41,7 +42,12 @@ export const KEYS = {
   goal: 'goal.current',
   perfs: 'perf.list',
   notice: 'coach.notice',
+  prefs: 'session.prefs',
 } as const
+
+export async function getSessionPrefs(database: CoachDB = db): Promise<SessionPrefs> {
+  return { ...DEFAULT_PREFS, ...((await getSetting<SessionPrefs>(KEYS.prefs, database)) ?? {}) }
+}
 
 export const DEFAULT_TEMPLATE: DayAvailability[] = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
   weekday,

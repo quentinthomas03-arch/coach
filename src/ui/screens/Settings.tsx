@@ -10,6 +10,7 @@ import { DisclaimerText } from '../components/Disclaimer'
 import { PageTitle } from '../Layout'
 import { PlanSettings } from './PlanSettings'
 import { NutritionSettings } from './NutritionSettings'
+import { SessionPrefsCard } from './SessionPrefsCard'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -241,6 +242,7 @@ export function Settings() {
     <div>
       <PageTitle>Réglages</PageTitle>
       <PlanSettings />
+      <SessionPrefsCard />
       <NutritionSettings />
       <IntervalsSection />
       <BackupSection />

@@ -32,6 +32,12 @@ Tout est du code déterministe et testé, sans IA. Chaque décision est expliqu�
 - **En reprise** : l'allure facile est volontairement plus lente (+15 à +30 s/km).
 - **Sans aucun chrono connu** : zones cardio, et le coach te demande un record.
 
+## Tes corrections (Réglages › Mes séances, et après chaque séance)
+- **« Je ne marche pas »** : l'échauffement devient un footing, les récupérations se font en trottinant, et le retour au calme en courant doucement.
+- **Allure d'échauffement** : tu la fixes (ex. 6:30/km), fourchette de −10 à +20 s autour.
+- **Allure facile** : de −60 à +60 s/km par rapport au calcul.
+- **Retour en un tap après une séance faite** : « allures trop faciles / bien / trop dures ». Les séances suivantes accélèrent ou ralentissent de 10 s/km, et « Ce qui a changé » l'indique.
+
 ## Nutrition
 - **Besoins du jour** : métabolisme de base (Mifflin-St Jeor) × activité, plus les séances. Les calories des séances viennent de la montre quand elle les fournit (nettes du métabolisme de base), sinon d'une estimation.
 - **Répartition** : la journée est répartie par repas selon l'heure de ta séance (collation avant la course du soir, dîner de récupération).

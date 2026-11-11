@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { MorningCheckin, PlannedSession } from '../../data/types'
 import { db } from '../../data/db'
 import { addFragileZone, dismissProposal, loadToday, type TodayView } from '../../app/daily'
-import { applyProposal, markDone, markMissed } from '../../app/plan'
+import { applyProposal, givePaceFeedback, markDone, markMissed } from '../../app/plan'
 import { saveActivityRpe } from '../../app/importer'
 import { setWaterEstimate } from '../../app/nutrition'
 import { addDays } from '../../domain/dates'
@@ -249,9 +249,36 @@ function SessionCard({ s, view }: { s: PlannedSession; view: TodayView }) {
         />
       )}
       {s.status === 'done' && s.kind !== 'renfo' && (
-        <button className="btn-secondary w-full mt-3" onClick={() => nav('/routine/etirements')}>
-          Étirements guidés (5 min)
-        </button>
+        <>
+          <button className="btn-secondary w-full mt-3" onClick={() => nav('/routine/etirements')}>
+            Étirements guidés (5 min)
+          </button>
+          {!s.paceFeedback ? (
+            <div className="mt-3">
+              <p className="text-sm font-medium mb-1.5">Les allures demandées étaient :</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    ['trop-lent', 'Trop faciles'],
+                    ['bien', 'Bien'],
+                    ['trop-rapide', 'Trop dures'],
+                  ] as const
+                ).map(([v, l]) => (
+                  <button key={v} className="btn-secondary px-2 text-sm" onClick={() => givePaceFeedback(s.id, v, view.today).then(() => syncToWatch(view.today))}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <Link to="/reglages#seances" className="text-sm underline text-muted inline-block mt-2 min-h-[32px]">
+                Autre correction (marche, échauffement…)
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-muted mt-2">
+              Retour noté : allures {s.paceFeedback === 'bien' ? 'bien dosées' : s.paceFeedback === 'trop-lent' ? 'trop faciles, les prochaines seront un peu plus rapides' : 'trop dures, les prochaines seront un peu plus lentes'}.
+            </p>
+          )}
+        </>
       )}
     </section>
   )

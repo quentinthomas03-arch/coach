@@ -39,6 +39,11 @@ function SessionSheet({ s, weekStart, today, onClose }: { s: PlannedSession; wee
           {sessionSummary(s)} · {s.durationMin} min
         </p>
         {s.kind !== 'renfo' && <WorkoutSteps s={s} />}
+        {s.kind !== 'renfo' && (
+          <a href="#/reglages#seances" className="text-sm underline text-muted inline-block mt-1 min-h-[32px]">
+            Corriger mes séances (marche, allures…)
+          </a>
+        )}
         <ul className="text-sm text-muted list-disc pl-5 mt-2 space-y-1">
           {s.reasons.map((r) => (
             <li key={r}>{r}</li>

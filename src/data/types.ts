@@ -98,6 +98,8 @@ export interface PlannedSession {
   origin?: 'moteur' | 'moi'
   workout?: Workout
   strength?: StrengthSession
+  /** Mon retour sur les allures après la séance. */
+  paceFeedback?: 'trop-lent' | 'bien' | 'trop-rapide'
 }
 
 export interface Activity {

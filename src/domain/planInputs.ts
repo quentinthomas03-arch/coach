@@ -37,6 +37,8 @@ export interface PlanInputs {
   vdot?: number
   missed: string[]
   skipped: string[]
+  /** Mes préférences de séance. */
+  prefs?: { walk: boolean; warmupPace?: number; easyOffset: number }
 }
 
 const WD = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
@@ -60,6 +62,16 @@ export function explainChanges(prev: PlanInputs | undefined, next: PlanInputs, s
   if (prev.overload !== next.overload) out.push(next.overload ? 'Surcharge prolongée détectée (check du matin sur 3 semaines) : plan allégé.' : 'Fin de la surcharge : retour au volume normal.')
   if (prev.goal !== next.goal) out.push(next.goal ? 'Nouvel objectif : plan construit à rebours.' : 'Objectif retiré : retour en Forme continue.')
   if (prev.vdot !== next.vdot && next.vdot) out.push(`Forme de référence mise à jour (VDOT ${prev.vdot ?? '—'} → ${next.vdot}) : allures recalculées.`)
+  const pp = prev.prefs
+  const np = next.prefs
+  if (np && pp) {
+    if (pp.walk !== np.walk) out.push(np.walk ? 'Tu remarches pendant l’échauffement et les récupérations (ta préférence).' : 'Tu ne marches pas : échauffement en footing et récupérations en trottinant (ta préférence).')
+    if (pp.warmupPace !== np.warmupPace) out.push(np.warmupPace ? `Échauffement à ${Math.floor(np.warmupPace / 60)}:${String(np.warmupPace % 60).padStart(2, '0')}/km (ta préférence).` : 'Allure d’échauffement : retour au calcul automatique.')
+    if (pp.easyOffset !== np.easyOffset) {
+      const d = np.easyOffset - pp.easyOffset
+      out.push(`Allure facile ${d > 0 ? 'ralentie' : 'accélérée'} de ${Math.abs(d)} s/km d’après ton retour (décalage total : ${np.easyOffset > 0 ? '+' : ''}${np.easyOffset} s/km).`)
+    }
+  }
   const newMissed = next.missed.filter((id) => !prev.missed.includes(id))
   for (const id of newMissed) {
     const s = sessions.find((x) => x.id === id)

@@ -236,3 +236,24 @@ describe('pourquoi le plan change', () => {
     expect(d[0].reason).toMatch(/Pas encore de séance faite/)
   })
 })
+
+describe('mes corrections de séance', () => {
+  it('« je ne marche pas » puis « trop rapide » : plan corrigé et causes affichées', async () => {
+    await database.settings.put({ key: KEYS.perfs, value: [{ id: 'p', date: '2026-03-15', distanceM: 21097.5, timeSec: 6000, source: 'record' }] })
+    await regenerate('Création', MONDAY, database)
+    const { saveSessionPrefs, givePaceFeedback } = await import('./plan')
+    const r = await saveSessionPrefs({ walk: false, warmupPace: 390, easyOffset: 0 }, MONDAY, database)
+    expect(r.version!.causes!.join(' ')).toMatch(/Tu ne marches pas/)
+    const runs = (await database.sessions.toArray()).filter((s) => s.kind !== 'renfo')
+    expect(runs.every((s) => !/Marche/.test(s.workoutText!))).toBe(true)
+    expect(runs[0].workoutText).toMatch(/Footing d’échauffement 5m 6:20-6:50\/km Pace/)
+
+    const first = runs.sort((a, b) => (a.date < b.date ? -1 : 1))[0]
+    await markDone(first.id, 6, database)
+    const before = (await database.sessions.toArray()).find((s) => s.id !== first.id && s.kind === 'marche-course')!.workoutText!
+    const f = await givePaceFeedback(first.id, 'trop-rapide', first.date, database)
+    expect(f!.version!.causes!.join(' ')).toMatch(/Allure facile ralentie de 10 s\/km d’après ton retour/)
+    const after = (await database.sessions.get((await database.sessions.toArray()).find((s) => s.id !== first.id && s.kind === 'marche-course')!.id))!.workoutText!
+    expect(after).not.toBe(before)
+  })
+})

@@ -12,7 +12,8 @@ import { estimateFitness, type Performance } from '../domain/fitness'
 import { sessionPaces } from '../domain/sessionPaces'
 import { detectOverload, OVERLOAD_DAYS, OVERLOAD_VOLUME_FACTOR } from '../domain/overload'
 import type { LevelDecision } from '../domain/reprise'
-import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
+import { getAvailability, getEquipment, getPlanConfig, getSessionPrefs, KEYS, savePlanConfig } from './config'
+import { adjustPaces, offsetAfterFeedback, type PaceFeedback, type SessionPrefs } from '../domain/sessionPrefs'
 import { goalWeek } from './goals'
 
 /**
@@ -101,10 +102,10 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
   if (!cfg) return { before: [], after: [], notes: [] }
   const availHash: Record<ISODate, string> = {}
   let goalKey: string | undefined
-  let vdotRef: number | undefined
   const notes: string[] = []
   const fitnessNow = estimateFitness((await getSetting<Performance[]>(KEYS.perfs, database)) ?? [], today)
-  const paces = sessionPaces(fitnessNow, (cfg.mode ?? 'reprise') === 'reprise')
+  const prefs = await getSessionPrefs(database)
+  const paces = adjustPaces(sessionPaces(fitnessNow, (cfg.mode ?? 'reprise') === 'reprise'), prefs)
   const equipment = await getEquipment(database)
   const overload = detectOverload(await database.checkins.where('date').between(addDays(today, -OVERLOAD_DAYS), today, true, true).toArray(), today)
   if (overload.active) notes.push(`Allègement temporaire : ${overload.reasons.join(', ')} ces 3 dernières semaines.`)
@@ -145,6 +146,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       ranPreviousSunday: prevSunday.some((s) => isRunSession(s) && s.status !== 'skipped'),
       zones,
       paces,
+      prefs,
       blockedDates: Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => isPaused(cfg.pause, d)),
       mode: gw ? 'objectif' : cfg.mode ?? 'reprise',
       formeBaseMinutes: cfg.formeBaseMinutes && overload.active ? Math.round(cfg.formeBaseMinutes * OVERLOAD_VOLUME_FACTOR) : cfg.formeBaseMinutes,
@@ -156,7 +158,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
     after.push(...plan.sessions.map((s) => mergeSync(s, existing.find((e) => e.id === s.id))))
     notes.push(...plan.notes)
   }
-  vdotRef = fitnessNow.vdot != null ? Math.round(fitnessNow.vdot) : undefined
+  const vdotRef = fitnessNow.vdot != null ? Math.round(fitnessNow.vdot) : undefined
   const sessionsAll = await database.sessions.where('date').between(addDays(w0, -7), addDays(w0, 14), true, false).toArray()
   const inputs: PlanInputs = {
     engine: ENGINE_VERSION,
@@ -176,6 +178,7 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
     vdot: vdotRef,
     missed: sessionsAll.filter((s) => s.status === 'missed').map((s) => s.id).sort(),
     skipped: sessionsAll.filter((s) => s.status === 'skipped').map((s) => s.id).sort(),
+    prefs,
   }
   return { before, after, notes, inputs }
 }
@@ -376,4 +379,20 @@ export async function dailyStale(today: ISODate, database: CoachDB = db) {
   const stale = await database.sessions.where('date').below(today).filter((s) => s.status === 'planned' && s.kind !== 'repos').toArray()
   for (const s of stale) await database.sessions.update(s.id, { status: 'missed' })
   return stale
+}
+
+/* ---------- Mes corrections de séance ---------- */
+
+export async function saveSessionPrefs(prefs: SessionPrefs, today: ISODate, database: CoachDB = db) {
+  await setSetting(KEYS.prefs, prefs, database)
+  return regenerate('Préférences de séance', today, database, { force: 'auto' })
+}
+
+/** Mon retour sur les allures d'une séance faite : les séances suivantes s'ajustent (±10 s/km). */
+export async function givePaceFeedback(sessionId: string, fb: PaceFeedback, today: ISODate, database: CoachDB = db) {
+  await database.sessions.update(sessionId, { paceFeedback: fb })
+  if (fb === 'bien') return
+  const prefs = await getSessionPrefs(database)
+  await setSetting(KEYS.prefs, { ...prefs, easyOffset: offsetAfterFeedback(prefs.easyOffset, fb) }, database)
+  return regenerate('Retour sur les allures', today, database, { force: 'auto' })
 }

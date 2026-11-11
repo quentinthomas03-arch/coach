@@ -264,7 +264,7 @@ function PrepCard({ s, daysUntil, target }: { s: TabacSettings; daysUntil: numbe
                 {done ? '✓ ' : ''}Semaine −{p.weeksBefore} · {p.title}
                 {now && <span className="ml-2 text-xs rounded-full bg-accent text-on-accent px-2 py-0.5">cette semaine</span>}
               </p>
-              {(now || daysUntil > 49) && (
+              {(now || (daysUntil > 49 && p.weeksBefore === 7)) && (
                 <ul className="list-disc pl-5 text-[15px] mt-1">
                   {p.todo.map((t) => (
                     <li key={t}>{t}</li>

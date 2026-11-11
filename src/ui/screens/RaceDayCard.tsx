@@ -33,7 +33,7 @@ export function RaceDayCard({ goal, predictedSec, today }: { goal: Goal; predict
       <div className="space-y-3 text-[15px]">
         <div className="flex items-center gap-2">
           <label className="label mb-0" htmlFor="race-start">Heure de départ</label>
-          <input id="race-start" type="time" className="field w-32" value={data.start} onChange={(e) => e.target.value && setSetting(START_KEY, e.target.value)} />
+          <input id="race-start" type="time" className="field w-40" value={data.start} onChange={(e) => e.target.value && setSetting(START_KEY, e.target.value)} />
         </div>
 
         <div>

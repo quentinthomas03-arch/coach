@@ -38,6 +38,11 @@ Le plan se recalcule tout seul à chaque ouverture de l’appli : import des sé
 - **Analyse tour par tour** : chaque étape de la séance (échauffement, fractions, récupérations) est comparée à sa fourchette d’allure, à partir des tours de la montre.
 - **Bilan de cycle** (Plan) : toutes les 4 semaines, avec un contrôle aérobie de 20 min à FC zone 2 en semaine allégée pour mesurer tes progrès d’endurance.
 - **Courses à venir** (Plan) : quand chaque distance devient réaliste pour toi, recherches de courses dans ton département, courses envisagées avec bilan en un tap et « Lancer comme objectif ».
+- **Météo des séances** (Aujourd’hui) : froid, nuit, chaleur, vent ; en cas d’orage, de verglas ou de forte pluie, le coach propose d’échanger avec un jour meilleur.
+- **Agenda iPhone** (Semaine › Dans mon agenda) : les séances des 14 prochains jours avec une alerte.
+- **Plan de course** (Plan, avec un objectif) : allures par tronçon et passages, repas de la veille et du matin, gels, horaires, échauffement, sac de la veille, puis bilan du chrono.
+- **Progrès** (Suivi) : records, trophées, cadence avec conseils, VO2max de la montre comparée à celle du coach. **Bilan du mois** dans Bilans.
+- **Arrêt du tabac** : programme de préparation sur 7 semaines, moments à cigarette avec plan B, envies notées et suivies.
 - **Eau sans contrainte** : question « Hier, tu as bu ? » dans le check du matin, gourde en 1 tap, ou eau saisie sur la montre (si Intervals.icu la transmet).
 
 ## Sommaire

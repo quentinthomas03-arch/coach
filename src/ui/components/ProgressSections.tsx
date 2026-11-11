@@ -35,9 +35,9 @@ export function ProgressSections() {
         <h2 className="display text-lg">Trophées · {earned.length}/{p.trophies.length}</h2>
         <ul className="grid grid-cols-3 gap-2">
           {p.trophies.map((t) => (
-            <li key={t.id} className={`rounded-card p-2 text-center ${t.earned ? 'bg-surface2' : 'opacity-40'}`} title={t.hint}>
-              <span className="text-2xl block" aria-hidden>{t.emoji}</span>
-              <span className="text-xs block leading-tight">{t.label}</span>
+            <li key={t.id} className={`rounded-card p-2 text-center ${t.earned ? 'bg-surface2' : 'border border-dashed border-line'}`} title={t.hint}>
+              <span className={`text-2xl block ${t.earned ? '' : 'grayscale opacity-40'}`} aria-hidden>{t.emoji}</span>
+              <span className={`text-xs block leading-tight ${t.earned ? 'font-semibold' : 'text-muted'}`}>{t.label}</span>
               <span className="sr-only">{t.earned ? 'obtenu' : 'à obtenir'}</span>
             </li>
           ))}

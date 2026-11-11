@@ -36,7 +36,7 @@ export function monthlyReview(i: MonthlyInput): WeeklyReview {
   const km = (xs: Activity[]) => xs.reduce((a, x) => a + (x.distanceM ?? 0), 0) / 1000
   const mRuns = runs.filter((a) => inM(a.date))
   const pRuns = runs.filter((a) => inP(a.date))
-  const planned = i.sessions.filter((s) => inM(s.date) && s.date <= end && s.kind !== 'repos' && s.status !== 'skipped')
+  const planned = i.sessions.filter((s) => inM(s.date) && s.date <= end && (s.date < i.today || s.status === 'done') && s.kind !== 'repos' && s.status !== 'skipped')
   const done = planned.filter((s) => s.status === 'done')
   const renfo = done.filter((s) => s.kind === 'renfo').length
   const rate = planned.length ? done.length / planned.length : undefined
@@ -63,12 +63,13 @@ export function monthlyReview(i: MonthlyInput): WeeklyReview {
   const tr = i.trophies.filter((t) => typeof t.earned === 'string' && inM(t.earned))
   for (const t of tr) facts.push(`${t.emoji} Trophée : ${t.label}.`)
 
-  if (rate == null && !mRuns.length) coach.push('Mois calme. Le plus dur, c’est de s’y remettre : une séance cette semaine et on relance.')
+  if (planned.length < 4 && mRuns.length < 4) coach.push('Trop tôt pour juger ce mois : reviens en fin de mois.')
+  else if (rate == null && !mRuns.length) coach.push('Mois calme. Le plus dur, c’est de s’y remettre : une séance cette semaine et on relance.')
   else if (rate != null && rate >= 0.85) coach.push('Mois très régulier. C’est exactement comme ça qu’on progresse : sans exploit, sans trou.')
   else if (rate != null && rate >= 0.6) coach.push('Mois correct. Quelques séances sautées : regarde quels jours coincent et déplace-les plutôt que de les perdre.')
   else if (rate != null) coach.push('Mois compliqué. On ne rattrape rien : on repart sur un rythme que tu peux tenir, et le plan s’adapte.')
   if (pRuns.length && km(mRuns) > km(pRuns) * 1.3) coach.push('Gros mois en volume par rapport au précédent : surveille fatigue et douleurs, et respecte la semaine allégée.')
-  if (renfo === 0 && planned.some((s) => s.kind === 'renfo')) coach.push('Zéro renfo ce mois-ci. C’est ce qui protège tes tendons : deux fois 20 min par semaine.')
+  if (planned.length >= 4 && renfo === 0 && planned.some((s) => s.kind === 'renfo')) coach.push('Zéro renfo ce mois-ci. C’est ce qui protège tes tendons : deux fois 20 min par semaine.')
   if (heavy >= 4) coach.push(`${heavy} soirées arrosées : ton sommeil et tes séances du lendemain en paient le prix.`)
   if (recs.length) coach.push(`${recs.length} record${recs.length > 1 ? 's' : ''} ce mois-ci : le travail paie.`)
 

@@ -41,7 +41,7 @@ describe('bilan de semaine', () => {
     { id: 'f2', sessionId: 'r2', date: '2026-11-19', rpe: 6, at: '' },
   ]
   it('course', () => {
-    expect(reviewWeek(week, sessions, fb, [], 'course')).toEqual({ planned: 3, done: 2, avgRpe: 5, pain: false })
+    expect(reviewWeek(week, sessions, fb, [], 'course')).toEqual({ planned: 3, done: 2, avgRpe: 5, pain: false, started: true })
   })
   it('renfo', () => {
     expect(reviewWeek(week, sessions, fb, [], 'renfo')).toMatchObject({ planned: 1, done: 1 })

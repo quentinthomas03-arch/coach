@@ -102,6 +102,8 @@ export function repriseLabel(level: number, long = false): string {
 export interface WeekReview {
   planned: number
   done: number
+  /** Au moins une séance faite depuis le début du plan (avant la fin de cette semaine). */
+  started?: boolean
   /** Effort ressenti moyen (1-10) des séances faites, si saisi. */
   avgRpe?: number
   pain: boolean
@@ -127,6 +129,9 @@ export function nextLevel(current: number, review: WeekReview): LevelDecision {
   const cur = getLevel(current).level
   if (review.pain) {
     return { level: Math.max(1, cur - 1), change: cur > 1 ? 'baisse' : 'stable', reason: 'Douleur signalée : on redescend d’un cran, la priorité est de ne pas se blesser.' }
+  }
+  if (review.planned > 0 && review.done === 0 && review.started === false) {
+    return { level: cur, change: 'stable', reason: 'Pas encore de séance faite : on garde ton niveau de départ, rien ne bouge tant que tu n’as pas commencé.' }
   }
   if (review.planned > 0 && review.done === 0) {
     return { level: Math.max(1, cur - 1), change: cur > 1 ? 'baisse' : 'stable', reason: 'Aucune séance faite la semaine dernière : on reprend un cran plus bas.' }

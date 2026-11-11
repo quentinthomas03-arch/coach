@@ -191,3 +191,47 @@ describe('envoi sur la montre', () => {
     expect((await database.sessions.toArray()).filter((s) => s.sync.status === 'error')).toHaveLength(3)
   })
 })
+
+describe('pourquoi le plan change', () => {
+  it('un check du matin « au top » ne change rien au plan', async () => {
+    await regenerate('Création', MONDAY, database)
+    await database.checkins.put({ date: MONDAY, physique: 5, moral: 5, travail: 5, viePerso: 5, at: '' })
+    expect((await regenerate('Ouverture', MONDAY, database)).changed).toBe(false)
+  })
+
+  it('plan créé avant la mise à jour : les +9 min sont expliqués, appliqués sans demander, course inchangée', async () => {
+    await savePlanConfig(cfg({ recalcMode: 'valider' }), database)
+    await regenerate('Création', MONDAY, database)
+    // On simule l'ancienne version : séances sans échauffement/étirements, pas de « photo » des entrées.
+    const all = await database.sessions.toArray()
+    for (const s of all.filter((x) => x.kind !== 'renfo' && x.workout)) {
+      const w = { blocks: s.workout!.blocks.map((b) => ({ ...b, steps: b.steps.filter((st) => !/guidé dans l’appli/.test(st.label ?? '')) })).filter((b) => b.steps.length) }
+      await database.sessions.put({ ...s, workout: w, durationMin: s.durationMin - 9, workoutText: 'ancien' })
+    }
+    await database.settings.delete('plan.inputs')
+    const r = await regenerate('Mise à jour du plan', MONDAY, database)
+    expect(r.version!.status).toBe('applied')
+    expect(r.version!.causes![0]).toMatch(/échauffement guidé \(4 min\) et les étirements \(5 min\)/)
+    expect(r.version!.changes.some((c) => /course inchangée/.test(c))).toBe(true)
+  })
+
+  it('montée de niveau : cause annoncée avec sa raison', async () => {
+    await regenerate('Création', MONDAY, database)
+    const runs = (await database.sessions.toArray()).filter((s) => s.kind !== 'renfo' && s.date < addDays(MONDAY, 7))
+    for (const r of runs) await markDone(r.id, 5, database)
+    const next = addDays(MONDAY, 7)
+    await applyWeeklyReviews(next, database)
+    const r = await regenerate('Bilan', next, database)
+    expect(r.version!.causes!.join(' ')).toMatch(/Niveau de reprise 2 → 3 : semaine validée/)
+  })
+
+  it('aucune séance faite la 1re semaine : on garde le niveau de départ, et c’est dit', async () => {
+    await regenerate('Création', MONDAY, database)
+    const next = addDays(MONDAY, 7)
+    const { dailyStale } = await import('./plan')
+    await dailyStale(next, database)
+    const d = await applyWeeklyReviews(next, database)
+    expect(d[0]).toMatchObject({ level: 2, change: 'stable' })
+    expect(d[0].reason).toMatch(/Pas encore de séance faite/)
+  })
+})

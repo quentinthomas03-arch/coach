@@ -24,6 +24,7 @@ export function reviewWeek(
   return {
     planned: list.length,
     done: done.length,
+    started: sessions.some((s) => s.status === 'done' && s.date < end),
     avgRpe: rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : undefined,
     pain,
   }

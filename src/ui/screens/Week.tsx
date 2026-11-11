@@ -177,7 +177,13 @@ export function Week() {
       {pending && (
         <section className="card border-warn/50">
           <h2 className="display text-lg">Le coach propose des changements</h2>
-          <p className="text-sm text-muted">{pending.cause}</p>
+          <p className="text-sm font-semibold mt-1">Pourquoi :</p>
+          <ul className="text-sm list-disc pl-5 space-y-1">
+            {(pending.causes ?? [pending.cause]).map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-semibold mt-2">Ce qui change :</p>
           <ul className="text-sm list-disc pl-5 my-2 space-y-1">
             {pending.changes.map((c) => (
               <li key={c}>{c}</li>
@@ -249,10 +255,17 @@ export function Week() {
             .map((v) => (
               <li key={v.id} className="border-t border-line pt-2">
                 <p className="text-sm font-semibold">
-                  {new Date(v.createdAt).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {v.cause}
+                  {new Date(v.createdAt).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   {v.status === 'undone' && <span className="text-muted"> (annulé)</span>}
                   {v.status === 'rejected' && <span className="text-muted"> (refusé)</span>}
                 </p>
+                <ul className="text-sm space-y-0.5">
+                  {(v.causes ?? [v.cause]).map((c) => (
+                    <li key={c}>
+                      <span className="font-medium">Pourquoi :</span> {c}
+                    </li>
+                  ))}
+                </ul>
                 <ul className="text-sm text-muted list-disc pl-5">
                   {v.changes.slice(0, 6).map((c) => (
                     <li key={c}>{c}</li>

@@ -222,6 +222,8 @@ export interface PlanVersion {
   /** Séances avant le changement, pour pouvoir annuler. */
   before: PlannedSession[]
   after: PlannedSession[]
+  /** Causes précises (attribution), affichées avant la liste des changements. */
+  causes?: string[]
   /** applied = en place ; pending = proposée, en attente de mon accord ; undone = annulée ; rejected = refusée. */
   status: 'applied' | 'pending' | 'undone' | 'rejected'
 }

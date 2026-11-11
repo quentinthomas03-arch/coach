@@ -6,7 +6,7 @@ import { computeReadiness, proposeAdjustment, type Readiness, type SessionPropos
 import type { LevelDecision } from '../domain/reprise'
 import { tabacStatus, type TabacStatus } from '../domain/tabac'
 import { getPlanConfig, getTabac, KEYS } from './config'
-import { applyWeeklyReviews, endPause, regenerate } from './plan'
+import { applyWeeklyReviews, dailyStale, endPause, regenerate } from './plan'
 import { syncToWatch, type SyncResult } from './sync'
 import { activitiesAwaitingRpe, importFromIntervals } from './importer'
 import { nutritionDay } from './nutrition'
@@ -28,8 +28,7 @@ export async function dailyRefresh(today: ISODate): Promise<{ sync?: SyncResult 
   await importFromIntervals(today).catch(() => undefined)
   const decisions = await applyWeeklyReviews(today)
   // Les séances passées non faites sont marquées « non faites ».
-  const stale = await db.sessions.where('date').below(today).filter((s) => s.status === 'planned' && s.kind !== 'repos').toArray()
-  for (const s of stale) await db.sessions.update(s.id, { status: 'missed' })
+  const stale = await dailyStale(today)
   const cause = decisions.length ? `Bilan de la semaine : ${decisions[decisions.length - 1].reason}` : stale.length ? 'Séance(s) non faite(s)' : 'Mise à jour du plan'
   await regenerate(cause, today)
   const sync = await syncToWatch(today).catch(() => undefined)

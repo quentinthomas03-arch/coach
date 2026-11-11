@@ -7,6 +7,8 @@ import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
 import type { FragileZone } from '../domain/routines'
 import { isPaused, resumeAfterPause, type Pause } from '../domain/pause'
+import { ENGINE_CHANGELOG, ENGINE_VERSION, explainChanges, type PlanInputs } from '../domain/planInputs'
+import { estimateFitness, type Performance } from '../domain/fitness'
 import { detectOverload, OVERLOAD_DAYS, OVERLOAD_VOLUME_FACTOR } from '../domain/overload'
 import type { LevelDecision } from '../domain/reprise'
 import { getAvailability, getEquipment, getPlanConfig, KEYS, savePlanConfig } from './config'
@@ -20,6 +22,8 @@ import { goalWeek } from './goals'
  *   qu'on peut annuler. En mode « valider », la version reste en attente de mon accord.
  * - Les séances verrouillées, faites ou passées ne sont jamais modifiées.
  */
+
+const INPUTS_KEY = 'plan.inputs'
 
 export const RUN_KINDS = new Set(['endurance', 'marche-course', 'seuil', 'fractionne', 'sortie-longue', 'cotes', 'recuperation', 'test'])
 export const isRunSession = (s: PlannedSession) => RUN_KINDS.has(s.kind)
@@ -85,9 +89,12 @@ export async function applyWeeklyReviews(today: ISODate, database: CoachDB = db)
 }
 
 /** Calcule le plan proposé (semaine en cours + suivante) sans rien enregistrer. */
-export async function computePlan(today: ISODate, database: CoachDB = db): Promise<{ before: PlannedSession[]; after: PlannedSession[]; notes: string[] }> {
+export async function computePlan(today: ISODate, database: CoachDB = db): Promise<{ before: PlannedSession[]; after: PlannedSession[]; notes: string[]; inputs?: PlanInputs }> {
   const cfg = await getPlanConfig(database)
   if (!cfg) return { before: [], after: [], notes: [] }
+  const availHash: Record<ISODate, string> = {}
+  let goalKey: string | undefined
+  let vdotRef: number | undefined
   const notes: string[] = []
   const equipment = await getEquipment(database)
   const overload = detectOverload(await database.checkins.where('date').between(addDays(today, -OVERLOAD_DAYS), today, true, true).toArray(), today)
@@ -105,7 +112,12 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
       ? after.filter((s) => s.date === sundayDate)
       : await database.sessions.where('date').equals(sundayDate).toArray()
     const { days } = await getAvailability(weekStart, database)
+    availHash[weekStart] = JSON.stringify(days.map((d) => [d.available, d.maxMinutes]))
     const gw = await goalWeek(weekStart, today, cfg, database)
+    if (gw) {
+      const g = await getSetting<{ id: string }>(KEYS.goal, database)
+      goalKey = g?.id
+    }
     if (gw) notes.push(`Objectif : semaine ${gw.weekIndex + 1}/${gw.total}, phase ${gw.phase}.`)
     const plan = planWeek({
       weekStart,
@@ -134,7 +146,29 @@ export async function computePlan(today: ISODate, database: CoachDB = db): Promi
     after.push(...plan.sessions.map((s) => mergeSync(s, existing.find((e) => e.id === s.id))))
     notes.push(...plan.notes)
   }
-  return { before, after, notes }
+  const fitness = estimateFitness((await getSetting<Performance[]>(KEYS.perfs, database)) ?? [], today)
+  vdotRef = fitness.vdot != null ? Math.round(fitness.vdot) : undefined
+  const sessionsAll = await database.sessions.where('date').between(addDays(w0, -7), addDays(w0, 14), true, false).toArray()
+  const inputs: PlanInputs = {
+    engine: ENGINE_VERSION,
+    mode: cfg.mode ?? 'reprise',
+    repriseLevel: cfg.repriseLevel,
+    strengthLevel: cfg.strengthLevel,
+    formeBase: cfg.formeBaseMinutes,
+    runsPerWeek: cfg.runsPerWeek,
+    strengthPerWeek: cfg.strengthPerWeek,
+    longRunWeekday: cfg.longRunWeekday,
+    startDate: cfg.startDate,
+    availability: availHash,
+    zones: [...zones].sort(),
+    pause: cfg.pause ? `${cfg.pause.from}:${cfg.pause.reason}` : undefined,
+    overload: overload.active,
+    goal: goalKey,
+    vdot: vdotRef,
+    missed: sessionsAll.filter((s) => s.status === 'missed').map((s) => s.id).sort(),
+    skipped: sessionsAll.filter((s) => s.status === 'skipped').map((s) => s.id).sort(),
+  }
+  return { before, after, notes, inputs }
 }
 
 /** Remplace les séances non conservées par `after`, et mémorise les suppressions à envoyer à Intervals.icu. */
@@ -179,18 +213,27 @@ export interface RegenerateResult {
 export async function regenerate(cause: string, today: ISODate, database: CoachDB = db, opts: { force?: 'auto' } = {}): Promise<RegenerateResult> {
   const cfg = await getPlanConfig(database)
   if (!cfg) return { changed: false, notes: [] }
-  const { before, after, notes } = await computePlan(today, database)
+  const { before, after, notes, inputs } = await computePlan(today, database)
+  const prevInputs = await getSetting<PlanInputs>(INPUTS_KEY, database)
   const changes = diffSessions(before.filter(futureOnly(today)), after.filter(futureOnly(today)))
+  if (inputs) await setSetting(INPUTS_KEY, inputs, database)
   if (!changes.length) return { changed: false, notes }
   const first = before.length === 0
-  const mode = opts.force ?? (first ? 'auto' : cfg.recalcMode)
+  const last = await getSetting<{ at: ISODate; decisions: LevelDecision[] }>(KEYS.lastDecisions, database)
+  let causes = first || !inputs ? [] : explainChanges(prevInputs, inputs, [...before, ...after], last?.at === today ? last.decisions[last.decisions.length - 1]?.reason : undefined)
+  // Plan créé avant cette version : on explique les mises à jour de l'appli intervenues depuis.
+  if (!prevInputs && !first) causes = [ENGINE_CHANGELOG[4], ENGINE_CHANGELOG[5]]
+  const onlyAppUpdate = causes.length > 0 && causes.every((c) => c.startsWith('Mise à jour de l’appli'))
+  if (!first && !causes.length) causes = [`${cause} : jours passés et séances déjà faites pris en compte.`]
+  const mode = opts.force ?? (first || onlyAppUpdate ? 'auto' : cfg.recalcMode)
   if (mode === 'valider') {
     const lastRejected = (await database.planVersions.orderBy('id').reverse().filter((v) => v.status === 'rejected').first())
     if (lastRejected && JSON.stringify(lastRejected.changes) === JSON.stringify(changes)) return { changed: false, notes }
   }
   const version: PlanVersion = {
     createdAt: new Date().toISOString(),
-    cause,
+    cause: first ? cause : causes.join(' '),
+    causes: first ? undefined : causes,
     changes,
     before,
     after,
@@ -317,4 +360,11 @@ export async function endPause(today: ISODate, database: CoachDB = db) {
   await setSetting(KEYS.notice, { at: today, messages: d.messages }, database)
   await regenerate('Fin de pause : reprise adaptée', today, database, { force: 'auto' })
   return d
+}
+
+/** Les séances passées non faites deviennent « non faites » (à l'ouverture de l'appli). */
+export async function dailyStale(today: ISODate, database: CoachDB = db) {
+  const stale = await database.sessions.where('date').below(today).filter((s) => s.status === 'planned' && s.kind !== 'repos').toArray()
+  for (const s of stale) await database.sessions.update(s.id, { status: 'missed' })
+  return stale
 }

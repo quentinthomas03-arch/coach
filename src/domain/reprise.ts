@@ -104,6 +104,8 @@ export interface WeekReview {
   done: number
   /** Au moins une séance faite depuis le début du plan (avant la fin de cette semaine). */
   started?: boolean
+  /** Semaines déjà passées à ce niveau avant celle-ci (0 = première semaine au niveau). */
+  weeksAtLevel?: number
   /** Effort ressenti moyen (1-10) des séances faites, si saisi. */
   avgRpe?: number
   pain: boolean
@@ -140,12 +142,20 @@ export function nextLevel(current: number, review: WeekReview): LevelDecision {
     return { level: cur, change: 'stable', reason: `Seulement ${review.done} séance faite : on consolide ce niveau avant de monter.` }
   }
   if (review.avgRpe != null && review.avgRpe >= 7) {
-    return { level: cur, change: 'stable', reason: `Effort ressenti élevé (${review.avgRpe.toFixed(1)}/10) : on reste au même niveau.` }
+    return { level: cur, change: 'stable', reason: `Effort ressenti élevé (${review.avgRpe.toFixed(1).replace('.', ',')}/10) : on reste au même niveau.` }
+  }
+  // Semaine incomplète (une séance manquée) : on monte seulement après 2 semaines à ce niveau.
+  if (review.done < review.planned && (review.weeksAtLevel ?? 0) < 1) {
+    return { level: cur, change: 'stable', reason: `${review.done}/${review.planned} séances faites : on consolide ce niveau une semaine de plus.` }
   }
   if (cur >= MAX_REPRISE_LEVEL) {
     return { level: cur, change: 'stable', reason: 'Reprise terminée : 30 min de course continue validées. Place à la Forme continue !', completed: true }
   }
-  return { level: cur + 1, change: 'monte', reason: `Semaine validée (${review.done}/${review.planned} séances, effort maîtrisé) : on monte d’un niveau.` }
+  return {
+    level: cur + 1,
+    change: 'monte',
+    reason: review.done >= review.planned ? `Semaine validée (${review.done}/${review.planned} séances, effort maîtrisé) : on monte d’un niveau.` : `Deuxième semaine solide à ce niveau (${review.done}/${review.planned}) : on monte d’un niveau.`,
+  }
 }
 
 /** Semaine allégée toutes les 4 semaines (4e, 8e…), index 0 = 1re semaine du plan. */

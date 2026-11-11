@@ -27,6 +27,8 @@ export interface PlanConfig {
   pause?: Pause
   /** Heure de lever habituelle (pour l'heure de coucher conseillée). */
   wakeTime?: string
+  /** Semaines passées au niveau de reprise actuel (pour la consolidation). */
+  levelWeeks?: number
 }
 
 export const KEYS = {

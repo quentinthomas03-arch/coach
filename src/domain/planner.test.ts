@@ -196,4 +196,15 @@ describe('planWeek', () => {
     expect(sessions).toContainEqual(missed)
     expect(futureRuns.some((s) => s.reasons.join(' ').includes('Remplace la séance non faite'))).toBe(true)
   })
+
+  it('forme : la sortie longue garde sa durée en fin de semaine, les séances faites ne sont pas reprogrammées', () => {
+    const av = avail([60, 60, 60, 60, 0, 90, 90])
+    const base = { mode: 'forme' as const, formeBaseMinutes: 157, weekIndex: 1, availability: av, ranPreviousSunday: true }
+    const monday = planWeek(input(base)).sessions.filter((s) => s.kind !== 'renfo')
+    const longMon = monday.find((s) => s.kind === 'sortie-longue')!.durationMin
+    const doneSoFar = monday.filter((s) => s.date < addDays(MONDAY, 6)).map((s) => ({ ...s, status: 'done' as const }))
+    const sunday = planWeek(input({ ...base, today: addDays(MONDAY, 6), existing: doneSoFar })).sessions
+    expect(sunday.find((s) => s.kind === 'sortie-longue')!.durationMin).toBe(longMon)
+    expect(sunday.filter((s) => s.kind === 'fractionne')).toHaveLength(monday.filter((s) => s.kind === 'fractionne').length)
+  })
 })

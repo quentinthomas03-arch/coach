@@ -3,6 +3,7 @@ import { CoachDB } from '../data/db'
 import { addDays } from '../domain/dates'
 import { IntervalsClient } from '../integrations/intervals'
 import { KEYS, savePlanConfig, type PlanConfig } from './config'
+import { runningMinutes } from '../domain/planInputs'
 import { acceptVersion, applyWeeklyReviews, endPause, markDone, moveSession, regenerate, rejectVersion, removeSession, startPause, undoVersion } from './plan'
 import { sessionsToSend, syncToWatch } from './sync'
 
@@ -144,7 +145,7 @@ describe('passage en forme continue', () => {
     const c = (await database.settings.get(KEYS.plan))!.value as PlanConfig
     expect(c.mode).toBe('forme')
     const base = c.formeBaseMinutes!
-    expect(base).toBe(week1.reduce((a, s) => a + s.durationMin, 0))
+    expect(base).toBe(Math.max(90, week1.reduce((a, s) => a + runningMinutes(s), 0)))
 
     await regenerate('Semaine 2', addDays(MONDAY, 7), database)
     const week2 = (await database.sessions.toArray()).filter((s) => s.kind !== 'renfo' && s.date >= addDays(MONDAY, 7) && s.date < addDays(MONDAY, 14))

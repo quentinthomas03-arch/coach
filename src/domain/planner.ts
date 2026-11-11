@@ -100,6 +100,23 @@ function runSession(date: ISODate, workout: Workout, opts: { long: boolean; leve
   }
 }
 
+/**
+ * Séances de la semaine encore à placer : on retire, pour chaque séance déjà faite ou fixée,
+ * un modèle du même type (sinon une endurance, sinon la dernière séance non clé).
+ * Ordre conservé : course, sortie longue, séances clés, puis endurance.
+ */
+export function remainingTemplates(full: FormeSessionTemplate[], kept: PlannedSession[]): { left: FormeSessionTemplate[]; consumed: { t: FormeSessionTemplate; k: PlannedSession }[] } {
+  const left = [...full]
+  const consumed: { t: FormeSessionTemplate; k: PlannedSession }[] = []
+  for (const k of kept) {
+    let i = left.findIndex((t) => t.kind === k.kind)
+    if (i < 0) i = left.findIndex((t) => t.kind === 'endurance')
+    if (i < 0) i = left.map((t) => !t.key).lastIndexOf(true)
+    if (i >= 0) consumed.push({ t: left.splice(i, 1)[0], k })
+  }
+  return { left, consumed }
+}
+
 /** Choisit `count` jours parmi `candidates` en maximisant l'écart avec `taken`. Déterministe. */
 export function spreadDays(candidates: number[], taken: number[], count: number): number[] {
   const chosen: number[] = []
@@ -157,7 +174,9 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
   // --- Course ---
   const raceWd = input.raceDate && dates.includes(input.raceDate) && input.raceDate >= input.today ? dates.indexOf(input.raceDate) : undefined
   const hasRace = raceWd !== undefined && !kept.some((s) => s.date === input.raceDate && s.kind === 'test')
-  const runsNeeded = Math.max(0, input.runsPerWeek - keptRunDays.length - (hasRace ? 1 : 0))
+  // Une séance ratée est remplacée une fois par semaine au maximum (pas d'effet boule de neige).
+  const missedCount = kept.filter((s) => isRun(s.kind) && s.status === 'missed').length
+  const runsNeeded = Math.max(0, input.runsPerWeek - keptRunDays.length - (hasRace ? 1 : 0) - Math.max(0, missedCount - 1))
   const runCandidates = usableFor(MIN_RUN_MIN).filter((d) => d !== raceWd && !(raceWd !== undefined && d === raceWd - 1))
   const runDays: number[] = []
   let longDay: number | undefined
@@ -190,20 +209,20 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
   const sessions: PlannedSession[] = [...kept]
   const generatedKeyDays: number[] = []
   if (input.mode === 'forme' || input.mode === 'objectif') {
-    let templates: FormeSessionTemplate[]
-    if (input.mode === 'objectif' && input.goalTemplates) {
-      templates = [...input.goalTemplates]
-      // Moins de jours libres que de séances : on garde la course, la longue et les séances clés d'abord.
-      const raceT = templates.filter((t) => t.kind === 'test')
-      const others = templates.filter((t) => t.kind !== 'test').slice(0, runDays.length)
-      templates = [...raceT, ...others]
-      if (others.length < input.goalTemplates.length - raceT.length) notes.push('Pas assez de jours disponibles pour toutes les séances prévues : les séances faciles sautent en premier.')
-    } else {
-      // Volume de la semaine, réduit au prorata des sorties déjà fixées par moi.
-      const base = weekMinutes(input.formeBaseMinutes ?? 120, input.weekIndex)
-      const total = Math.round((base * runDays.length) / Math.max(1, input.runsPerWeek))
-      templates = formeWeek(total, runDays.length, input.weekIndex)
-    }
+    // La semaine complète est toujours construite, puis on retire les séances déjà faites ou fixées :
+    // la sortie longue garde sa durée même en fin de semaine, et une séance clé faite n'est pas reprogrammée.
+    const full =
+      input.mode === 'objectif' && input.goalTemplates
+        ? [...input.goalTemplates]
+        : formeWeek(weekMinutes(input.formeBaseMinutes ?? 120, input.weekIndex), input.runsPerWeek, input.weekIndex)
+    const rt = remainingTemplates(full, kept.filter((s) => isRun(s.kind) && counts(s)))
+    let templates = rt.left
+    // Moins de jours libres que de séances : on garde la course, la longue et les séances clés d'abord.
+    const raceT = templates.filter((t) => t.kind === 'test')
+    const others = templates.filter((t) => t.kind !== 'test')
+    const fit = others.slice(0, runDays.length)
+    if (fit.length < others.length) notes.push('Pas assez de jours disponibles pour toutes les séances prévues : les séances faciles sautent en premier.')
+    templates = [...raceT, ...fit]
     const free = [...runDays]
     const keyRefs: number[] = [...keptKeyDays, ...(hasRace ? [raceWd!] : [])]
     const take = (d: number | undefined) => {
@@ -211,6 +230,8 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
       free.splice(free.indexOf(d), 1)
       return d
     }
+    // 1) Placement des séances sur les jours.
+    const placed: { t: FormeSessionTemplate; wd: number }[] = []
     for (const t of templates) {
       let wd: number | undefined
       if (t.kind === 'test') wd = raceWd
@@ -230,18 +251,36 @@ export function planWeek(input: WeekPlanInput): WeekPlan {
         keyRefs.push(wd)
       } else wd = take(free[0])
       if (wd === undefined) continue
-      const max = t.kind === 'test' ? 24 * 60 : avail(wd)?.maxMinutes ?? 60
+      placed.push({ t, wd })
+    }
+    // 2) Temps coupé faute de créneau en semaine → reporté sur la sortie longue si son jour le permet.
+    const extra = 9 // échauffement guidé + étirements
+    const room = (wd: number, t: FormeSessionTemplate) => (t.kind === 'test' ? 24 * 60 : (avail(wd)?.maxMinutes ?? 60)) - extra
+    let cut = 0
+    for (const p of placed) if (p.t.kind !== 'sortie-longue' && p.t.kind !== 'test') cut += Math.max(0, p.t.minutes - room(p.wd, p.t))
+    // Séances déjà faites cette semaine qui avaient été raccourcies : leur report reste acquis.
+    for (const { t, k } of rt.consumed) if (t.kind !== 'sortie-longue' && t.kind !== 'test') cut += Math.max(0, t.minutes - (k.durationMin - extra))
+    const longP = placed.find((p) => p.t.kind === 'sortie-longue')
+    let moved = 0
+    if (longP && cut > 0) {
+      moved = Math.min(cut, Math.max(0, room(longP.wd, longP.t) - longP.t.minutes), 30)
+      if (moved >= 5) longP.t = { ...longP.t, minutes: longP.t.minutes + moved, workout: easyWorkout(longP.t.minutes + moved) }
+      else moved = 0
+    }
+    // 3) Construction des séances.
+    for (const { t, wd } of placed) {
+      const max = room(wd, t) + extra
       const reasons = [
         input.mode === 'objectif' ? `${weekLabel} · plan objectif.` : `${weekLabel} · forme continue, semaine ${(input.weekIndex % 4) + 1}/4 du cycle.`,
         t.reason,
       ]
-      const extra = 9 // échauffement guidé + étirements
       let workout = t.workout
       if (t.minutes + extra > max) {
         const m = max - extra
         workout = t.key && t.kind !== 'sortie-longue' ? (t.kind === 'fractionne' ? fartlekWorkout(m).workout : t.workout) : easyWorkout(m)
         reasons.push(`Raccourcie pour tenir dans tes ${max} min disponibles.`)
       }
+      if (t.kind === 'sortie-longue' && moved) reasons.push(`+${moved} min : le temps qui ne tenait pas dans tes créneaux de semaine est reporté ici.`)
       workout = withRoutines(applyPaces(workout, input.paces), input.zones, { stretch: t.kind !== 'test' })
       reasons.push(t.kind === 'test' ? 'Échauffement guidé obligatoire avant le départ.' : 'Échauffement guidé au début et étirements à la fin : ils font partie de la séance.')
       if (deload && input.mode !== 'objectif') reasons.push('Semaine allégée.')

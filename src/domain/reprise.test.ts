@@ -46,6 +46,10 @@ describe('progression de niveau', () => {
   it('reste si effort trop élevé', () => {
     expect(nextLevel(3, { planned: 3, done: 3, avgRpe: 7.5, pain: false })).toMatchObject({ level: 3, change: 'stable' })
   })
+  it('semaine incomplète : consolide une semaine, puis monte', () => {
+    expect(nextLevel(3, { planned: 3, done: 2, pain: false, weeksAtLevel: 0 })).toMatchObject({ level: 3, change: 'stable' })
+    expect(nextLevel(3, { planned: 3, done: 2, pain: false, weeksAtLevel: 1 })).toMatchObject({ level: 4, change: 'monte' })
+  })
   it('reste si moins de 2 séances', () => {
     expect(nextLevel(3, { planned: 3, done: 1, pain: false }).level).toBe(3)
   })

@@ -7,7 +7,7 @@ import { nextLevel, nextStrengthLevel, reviewWeek } from '../domain/progression'
 import { nextBaseMinutes } from '../domain/forme'
 import type { FragileZone } from '../domain/routines'
 import { isPaused, resumeAfterPause, type Pause } from '../domain/pause'
-import { ENGINE_CHANGELOG, ENGINE_VERSION, explainChanges, type PlanInputs } from '../domain/planInputs'
+import { ENGINE_CHANGELOG, ENGINE_VERSION, explainChanges, runningMinutes, type PlanInputs } from '../domain/planInputs'
 import { estimateFitness, type Performance } from '../domain/fitness'
 import { sessionPaces } from '../domain/sessionPaces'
 import { detectOverload, OVERLOAD_DAYS, OVERLOAD_VOLUME_FACTOR } from '../domain/overload'
@@ -53,24 +53,30 @@ export async function applyWeeklyReviews(today: ISODate, database: CoachDB = db)
   let week = cfg.lastReviewedWeek ? addDays(cfg.lastReviewedWeek, 7) : firstWeek
   const decisions: LevelDecision[] = []
   const [sessions, feedback, checkins] = await Promise.all([database.sessions.toArray(), database.feedback.toArray(), database.checkins.toArray()])
-  let { repriseLevel, strengthLevel, mode = 'reprise', formeBaseMinutes } = cfg
+  let { repriseLevel, strengthLevel, mode = 'reprise', formeBaseMinutes, levelWeeks = 0 } = cfg
   let prevStrength
   while (week < currentWeek) {
     const run = reviewWeek(week, sessions, feedback, checkins, 'course')
     const str = reviewWeek(week, sessions, feedback, checkins, 'renfo')
+    // Créneaux de la semaine : une séance ratée remplacée ne compte qu'une fois.
+    run.planned = Math.min(run.planned, cfg.runsPerWeek)
+    run.done = Math.min(run.done, run.planned)
     if (run.planned > 0 && mode === 'reprise') {
-      const d = nextLevel(repriseLevel, run)
+      const d = nextLevel(repriseLevel, { ...run, weeksAtLevel: levelWeeks })
+      levelWeeks = d.level === repriseLevel ? levelWeeks + 1 : 0
       repriseLevel = d.level
       decisions.push(d)
       if (d.completed) {
         // Passage en Forme continue : on part du volume de course de cette dernière semaine.
         const end = addDays(week, 7)
         mode = 'forme'
-        formeBaseMinutes = Math.max(90, sessions.filter((s) => s.date >= week && s.date < end && isRunSession(s)).reduce((a, s) => a + s.durationMin, 0))
+        // Point de départ : le temps de course réellement fait (hors échauffement guidé et étirements).
+        formeBaseMinutes = Math.max(90, sessions.filter((s) => s.date >= week && s.date < end && isRunSession(s) && s.status === 'done').reduce((a, s) => a + runningMinutes(s), 0))
       }
     } else if (run.planned > 0 && mode === 'forme') {
       const { days } = await getAvailability(addDays(week, 7), database)
-      const maxAvail = days.filter((d) => d.available).map((d) => d.maxMinutes).sort((a, b) => b - a).slice(0, cfg.runsPerWeek).reduce((a, b) => a + b, 0)
+      // Plafond : ce que mes créneaux permettent de courir (hors 9 min d'échauffement et d'étirements par séance).
+      const maxAvail = days.filter((d) => d.available).map((d) => d.maxMinutes - 9).sort((a, b) => b - a).slice(0, cfg.runsPerWeek).reduce((a, b) => a + b, 0)
       const n = nextBaseMinutes(formeBaseMinutes ?? 120, run, weekIndexOf(cfg.startDate, week), maxAvail)
       decisions.push({ level: repriseLevel, change: n.minutes > (formeBaseMinutes ?? 120) ? 'monte' : n.minutes < (formeBaseMinutes ?? 120) ? 'baisse' : 'stable', reason: n.reason })
       formeBaseMinutes = n.minutes
@@ -83,7 +89,7 @@ export async function applyWeeklyReviews(today: ISODate, database: CoachDB = db)
     week = addDays(week, 7)
   }
   if (decisions.length || cfg.repriseLevel !== repriseLevel || cfg.strengthLevel !== strengthLevel) {
-    await savePlanConfig({ ...cfg, repriseLevel, strengthLevel, mode, formeBaseMinutes }, database)
+    await savePlanConfig({ ...cfg, repriseLevel, strengthLevel, mode, formeBaseMinutes, levelWeeks }, database)
     await setSetting(KEYS.lastDecisions, { at: today, decisions }, database)
   } else if (cfg.lastReviewedWeek) await savePlanConfig(cfg, database)
   return decisions

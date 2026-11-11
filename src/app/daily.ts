@@ -19,6 +19,7 @@ import { analyzeNote } from '../domain/notes'
 import { estimateFitness, hrMaxOf, type Performance } from '../domain/fitness'
 import { fitnessSeries, recoveryLeft, trainingStatus, type FitnessPoint, type TrainingStatus } from '../domain/fitnessModel'
 import { analyzeRun } from '../domain/runAnalysis'
+import { analyzeLaps } from '../domain/laps'
 import { RUN_TYPES } from '../domain/activities'
 import { regularStreak } from '../domain/streak'
 import { mondayOf } from '../domain/dates'
@@ -131,7 +132,14 @@ export async function loadToday(today: ISODate): Promise<TodayView> {
     .filter((a) => a.date >= addDays(today, -2) && RUN_TYPES.has(a.type))
     .map((a) => {
       const s = sess70.find((x) => x.id === a.matchedSessionId)
-      return { ...analyzeRun(a, s, hrMax), sessionId: s?.id, title: s?.title }
+      const base = analyzeRun(a, s, hrMax)
+      // Tour par tour quand c'est possible (séance structurée suivie sur la montre).
+      const la = s?.workout && a.laps?.length ? analyzeLaps(s.workout, a.laps) : undefined
+      if (la?.matched && la.judged) {
+        const verdict = la.ok === la.judged ? 'dans-la-cible' : la.tooFast > la.judged / 2 ? 'trop-vite' : la.tooSlow > la.judged / 2 ? 'trop-lent' : base.verdict === 'inconnu' ? 'dans-la-cible' : base.verdict
+        return { ...base, verdict, text: la.text, sessionId: s?.id, title: s?.title }
+      }
+      return { ...base, sessionId: s?.id, title: s?.title }
     })
     .filter((r) => !sess70.find((x) => x.id === r.sessionId)?.paceFeedback)
   const messages = cfg ? coachMessages({ runAnalyses, trainingStatus: status, noPaceRef, profileUnchecked, noteInsights, sleepAvg, overload, paused, notice: notice && notice.at >= addDays(today, -3) ? notice.messages : undefined, today, tone: cfg.tone, sessions, checkins, readiness, levelDecision, tabac, loadAlerts: load.alerts, waterYesterday, fragileZones }) : []

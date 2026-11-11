@@ -7,6 +7,7 @@ import { loadCredentials, logSync } from '../integrations/intervalsStore'
 import { getSetting, setSetting } from '../data/db'
 import { detectEfforts, estimateFitness, hrMaxOf, RECENT_DAYS, type Performance } from '../domain/fitness'
 import { KEYS } from './config'
+import { parseLaps } from '../domain/laps'
 
 /**
  * Import depuis Intervals.icu (sens Garmin → appli) :
@@ -54,6 +55,7 @@ export async function importFromIntervals(today: ISODate, database: CoachDB = db
       await database.wellness.bulkPut(wellness)
     })
     await updateAutoPerformances(today, database)
+    await fetchRecentLaps(today, client, database).catch(() => undefined)
     const message = `${fresh.length} activité(s), ${wellness.length} jour(s) de bien-être, ${matchedCount} séance(s) reconnue(s).`
     if (matchedCount) await logSync('import', true, message)
     return { ok: true, activities: fresh.length, wellnessDays: wellness.length, matched: matchedCount, message }
@@ -102,5 +104,16 @@ export async function updateAutoPerformances(today: ISODate, database: CoachDB =
       { at: today, messages: [`Nouvelle référence détectée (${fresh[fresh.length - 1].label?.toLowerCase()}) : tes allures sont mises à jour${before.vdot != null ? ` (VDOT ${before.vdot} → ${after.vdot})` : ''}. Bien joué !`] },
       database,
     )
+  }
+}
+
+/** Récupère les tours des sorties récentes rapprochées d'une séance structurée (une seule fois par sortie). */
+export async function fetchRecentLaps(today: ISODate, client: IntervalsClient, database: CoachDB = db) {
+  const acts = await database.activities.where('date').between(addDays(today, -3), today, true, true).filter((a) => !!a.matchedSessionId && !a.laps).toArray()
+  for (const a of acts) {
+    const s = await database.sessions.get(a.matchedSessionId!)
+    if (!s?.workout) continue
+    const laps = parseLaps(await client.activityIntervals(a.id))
+    await database.activities.update(a.id, { laps })
   }
 }

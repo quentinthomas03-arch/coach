@@ -16,9 +16,9 @@ beforeEach(async () => {
 })
 afterEach(() => database.delete())
 
-function client(acts: unknown[], well: unknown[]) {
+function client(acts: unknown[], well: unknown[], laps: unknown = []) {
   const f = async (url: string) =>
-    new Response(JSON.stringify(url.includes('/activities') ? acts : url.includes('/wellness') ? well : []), { status: 200, headers: { 'content-type': 'application/json' } })
+    new Response(JSON.stringify(url.endsWith('/intervals') || url.includes('intervals=true') ? laps : url.includes('/activities') ? acts : url.includes('/wellness') ? well : []), { status: 200, headers: { 'content-type': 'application/json' } })
   return new IntervalsClient({ athleteId: 'i1', apiKey: 'abcdefghijkl' }, f as unknown as typeof fetch)
 }
 
@@ -39,6 +39,11 @@ describe('import Intervals.icu', () => {
     const again = await importFromIntervals(run.date, database, client([{ id: 'a1', start_date_local: `${run.date}T18:30:00`, type: 'Run', moving_time: 1900 }], []))
     expect(again.matched).toBe(0)
     expect((await database.activities.get('a1'))!.matchedSessionId).toBe(run.id)
+  })
+  it('récupère les tours de la sortie rapprochée', async () => {
+    const run = (await database.sessions.toArray()).find((s) => s.kind === 'marche-course')!
+    await importFromIntervals(run.date, database, client([{ id: 'a1', start_date_local: `${run.date}T18:30:00`, type: 'Run', moving_time: 1900 }], [], { icu_intervals: [{ moving_time: 300, distance: 600 }, { moving_time: 120, distance: 300 }] }))
+    expect((await database.activities.get('a1'))!.laps).toHaveLength(2)
   })
   it('reprend l’effort saisi sur Intervals.icu', async () => {
     const run = (await database.sessions.toArray()).find((s) => s.kind === 'marche-course')!

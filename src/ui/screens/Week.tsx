@@ -7,6 +7,7 @@ import { acceptVersion, addMySession, computePlan, markDone, moveSession, regene
 import { syncToWatch } from '../../app/sync'
 import { addDays, formatLongFr, mondayOf, todayISO } from '../../domain/dates'
 import { repriseWorkout } from '../../domain/reprise'
+import { analyzeLaps, stepLine } from '../../domain/laps'
 import { withRoutines, type FragileZone } from '../../domain/routines'
 import { estimateDurationSec, toIntervalsText } from '../../domain/workout'
 import { Choice } from '../components/Choice'
@@ -15,6 +16,37 @@ import { DAY_NAMES, WeekEditor } from '../components/WeekEditor'
 import { PageTitle } from '../Layout'
 
 const afterChange = (today: string) => syncToWatch(today).catch(() => undefined)
+
+/** Séance faite : chaque étape, l'allure réalisée face à la fourchette. */
+function DoneLaps({ s }: { s: PlannedSession }) {
+  const act = useDbQuery(() => db.activities.where('date').equals(s.date).filter((a) => a.matchedSessionId === s.id).first(), [s.id])
+  if (!act) return <p className="text-sm text-muted mt-2">Pas encore de données de la montre pour cette séance.</p>
+  const la = act.laps?.length ? analyzeLaps(s.workout!, act.laps) : undefined
+  return (
+    <div className="mt-2">
+      <p className="text-sm font-semibold">
+        Réalisé : {Math.round(act.durationSec / 60)} min{act.distanceM ? ` · ${(act.distanceM / 1000).toFixed(1).replace('.', ',')} km` : ''}
+        {act.avgHr ? ` · FC ${act.avgHr}` : ''}
+      </p>
+      {la?.matched ? (
+        <>
+          <p className="text-sm mt-1">{la.text}</p>
+          <ul className="text-sm mt-1 space-y-0.5">
+            {la.results
+              .filter((r) => r.verdict !== 'non-jugé')
+              .map((r, i) => (
+                <li key={i} className={r.verdict === 'ok' ? '' : 'font-semibold'}>
+                  {r.verdict === 'ok' ? '✓' : r.verdict === 'trop-vite' ? '↑' : '↓'} {stepLine(r)}
+                </li>
+              ))}
+          </ul>
+        </>
+      ) : (
+        <p className="text-sm text-muted mt-1">{la ? la.text : 'Tours de la montre pas (encore) disponibles.'}</p>
+      )}
+    </div>
+  )
+}
 
 function SessionSheet({ s, weekStart, today, onClose, others }: { s: PlannedSession; weekStart: string; today: string; onClose: () => void; others: PlannedSession[] }) {
   const [moving, setMoving] = useState(false)
@@ -39,7 +71,8 @@ function SessionSheet({ s, weekStart, today, onClose, others }: { s: PlannedSess
         <p className="font-semibold mt-1">
           {sessionSummary(s)} · {s.durationMin} min
         </p>
-        {s.kind !== 'renfo' && <WorkoutSteps s={s} />}
+        {s.kind !== 'renfo' && s.status !== 'done' && <WorkoutSteps s={s} />}
+        {s.status === 'done' && s.workout && <DoneLaps s={s} />}
         {s.kind !== 'renfo' && (
           <a href="#/reglages#seances" className="text-sm underline text-muted inline-block mt-1 min-h-[32px]">
             Corriger mes séances (marche, allures…)

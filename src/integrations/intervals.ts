@@ -85,14 +85,15 @@ export class IntervalsClient {
     return `${base}/api/v1/athlete/${encodeURIComponent(this.creds.athleteId.trim())}${path}`
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown, absolute = false): Promise<T> {
     validateCredentials(this.creds)
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       throw new IntervalsError('offline', 'Hors ligne')
     }
     let res: Response
     try {
-      res = await this.fetchFn(this.url(path), {
+      const base = (this.creds.baseUrl || INTERVALS_DEFAULT_BASE).replace(/\/$/, '')
+      res = await this.fetchFn(absolute ? `${base}${path}` : this.url(path), {
         method,
         headers: {
           Authorization: authHeader(this.creds.apiKey.trim()),
@@ -142,6 +143,20 @@ export class IntervalsClient {
 
   listActivities(oldest: string, newest: string) {
     return this.request<Array<Record<string, unknown>>>('GET', `/activities?oldest=${oldest}&newest=${newest}`)
+  }
+
+  /**
+   * Tours / intervalles d'une activité. Deux formes existent selon les versions de l'API :
+   * /activity/{id}/intervals, ou l'activité avec ?intervals=true (champ icu_intervals).
+   */
+  async activityIntervals(activityId: string): Promise<unknown> {
+    const id = encodeURIComponent(activityId)
+    try {
+      return await this.request<unknown>('GET', `/api/v1/activity/${id}/intervals`, undefined, true)
+    } catch (e) {
+      if (e instanceof IntervalsError && e.kind === 'not-found') return this.request<unknown>('GET', `/api/v1/activity/${id}?intervals=true`, undefined, true)
+      throw e
+    }
   }
 
   listWellness(oldest: string, newest: string) {

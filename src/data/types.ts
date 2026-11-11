@@ -117,6 +117,8 @@ export interface Activity {
   name?: string
   /** Calories brutes mesurées par la montre. */
   calories?: number
+  /** Tours enregistrés par la montre (un par étape d'une séance structurée). */
+  laps?: { durationSec: number; distanceM?: number; pace?: number; avgHr?: number; type?: string; label?: string }[]
   raw?: unknown
 }
 

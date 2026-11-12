@@ -41,7 +41,7 @@ function Circle({ r, pct, color, size }: { r: Ring; pct: number; color: string; 
 
 export function Rings({ rings }: { rings: Ring[] }) {
   return (
-    <ul className="grid grid-cols-4 gap-1 mt-3" aria-label="Objectifs du jour">
+    <ul className="grid gap-1 mt-3" style={{ gridTemplateColumns: `repeat(${rings.length}, minmax(0, 1fr))` }} aria-label="Objectifs du jour">
       {rings.map((r) => {
         const pct = r.target > 0 ? Math.min(1, r.value / r.target) : 0
         return (

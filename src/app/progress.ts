@@ -42,7 +42,7 @@ export async function loadProgress(today: ISODate, database: CoachDB = db) {
 export async function buildMonthlyReview(month: string, today: ISODate, database: CoachDB = db) {
   const { from, to } = monthBounds(month)
   const t = await trophyList(today, database)
-  const [well, foodDates] = await Promise.all([database.wellness.where('date').between(from, to, true, true).toArray(), database.foodLog.where('date').between(from, to, true, true).toArray()])
+  const well = await database.wellness.where('date').between(from, to, true, true).toArray()
   return monthlyReview({
     month,
     today,
@@ -52,6 +52,5 @@ export async function buildMonthlyReview(month: string, today: ISODate, database
     sleepHours: well.map((w) => w.sleepHours).filter((x): x is number => x != null),
     cravings: t.cravings,
     trophies: t.list,
-    foodDays: new Set(foodDates.map((f) => f.date)).size,
   })
 }

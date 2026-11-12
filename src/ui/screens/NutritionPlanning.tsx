@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { buildMenu, clearBasket, getBasket, getMenu, logRecipe, nutrientTable, scaleFor, setMeal, thisMonday, toggleBasket } from '../../app/menu'
+import { buildMenu, clearBasket, getBasket, getMenu, nutrientTable, scaleFor, setMeal, thisMonday, toggleBasket } from '../../app/menu'
 import { MEALS, type Meal } from '../../app/nutrition'
 import { addDays, formatLongFr, parseISODate, todayISO } from '../../domain/dates'
 import { basketIdeas, formatQty, recipeNutrients, type NutrientTable } from '../../domain/menu'
@@ -12,8 +12,7 @@ const day2 = (d: string) => formatLongFr(d).split(' ').slice(0, 2).join(' ')
 
 function RecipeSheet({ r, table, onClose, onChoose, date, slot }: { r: Recipe; table?: NutrientTable; onClose: () => void; onChoose?: () => void; date?: string; slot?: Meal }) {
   const n = table ? recipeNutrients(r, table) : undefined
-  const [meal, setMealSlot] = useState<Meal>(slot ?? 'dejeuner')
-  const [done, setDone] = useState(false)
+  const meal: Meal = slot ?? 'dejeuner'
   const sc = useDbQuery(() => (date ? scaleFor(r.id, date, meal) : Promise.resolve(undefined)), [r.id, date, meal])
   const f = sc?.factor ?? 1
   return (
@@ -50,21 +49,6 @@ function RecipeSheet({ r, table, onClose, onChoose, date, slot }: { r: Recipe; t
             <li key={s}>{s}</li>
           ))}
         </ol>
-        {date && date <= todayISO() && (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium">Ajouter ta portion au journal :</p>
-            <div className="grid grid-cols-4 gap-1">
-              {MEALS.map((m) => (
-                <button key={m.id} className={`min-h-[44px] rounded-btn border text-xs ${meal === m.id ? 'bg-accent text-on-accent border-transparent' : 'bg-surface2 border-line'}`} onClick={() => setMealSlot(m.id)}>
-                  {m.label.replace('Petit-déjeuner', 'Petit-déj')}
-                </button>
-              ))}
-            </div>
-            <button className="btn-primary w-full" disabled={done} onClick={async () => { await logRecipe(r.id, date, meal, undefined, f); setDone(true) }}>
-              {done ? 'Ajouté ✓' : 'Je l’ai mangé'}
-            </button>
-          </div>
-        )}
         {onChoose && (
           <button className="btn-primary w-full mt-2" onClick={onChoose}>
             Choisir cette recette

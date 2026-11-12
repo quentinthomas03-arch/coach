@@ -260,7 +260,7 @@ export function coachMessages(ctx: CoachContext): CoachMessage[] {
     out.push({
       rule: 'profil',
       kind: 'info',
-      text: 'Ta taille, ton poids et ton âge sont encore ceux par défaut : tes besoins caloriques sont donc approximatifs. Corrige-les en 10 secondes.',
+      text: 'Ta taille, ton poids et ton âge sont encore ceux par défaut : ton eau du jour, tes portions et ton plan de course sont donc approximatifs. Corrige-les en 10 secondes.',
       action: { label: 'Corriger mon profil', type: 'link', to: '/reglages#nutrition' },
     })
   }

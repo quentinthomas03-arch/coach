@@ -368,18 +368,15 @@ function SundayCard() {
 
 function NutritionCard({ today }: { today: string }) {
   const d = useResults(() => nutritionDay(today), [today])
-  if (!d || !d.targets) return null
+  if (!d) return null
   return (
     <section className="card tint tint-nutri space-y-3" aria-label="Nutrition et eau">
       <Link to="/nutrition" className="flex items-center justify-between">
         <h2 className="display text-lg flex items-center gap-2">
           <span className="chip" aria-hidden>🍽️</span> Nutrition
         </h2>
-        <span className="num font-semibold">
-          {d.eaten.kcal} <span className="text-sm text-muted font-normal">/ {d.targets.kcal} kcal ›</span>
-        </span>
+        <span className="text-sm text-muted">Assiette et menu ›</span>
       </Link>
-      <Gauge label="Protéines" value={d.eaten.protein} target={d.targets.protein} unit="g" color="nutri" />
       <Gauge label="Eau 💧" value={Math.round(d.waterMl / 10) / 100} target={Math.round(d.hydration.ml / 10) / 100} unit="L" color="eau" />
       <WaterButtons date={today} bottleMl={d.bottleMl} />
       {d.waterSource === 'montre' && <p className="text-xs text-muted">Eau enregistrée sur ta montre.</p>}
@@ -403,7 +400,6 @@ function TodayRings({ view }: { view: TodayView }) {
   const n = useResults(() => nutritionDay(view.today), [view.today])
   const rings: Ring[] = [
     { label: 'Séances', value: view.week.done, target: Math.max(1, view.week.planned), color: '--c-course', text: `${view.week.done}/${view.week.planned} sem.` },
-    { label: 'Protéines', value: n?.eaten.protein ?? 0, target: n?.targets?.protein ?? 120, color: '--c-nutri', text: `${n?.eaten.protein ?? 0}/${n?.targets?.protein ?? '—'} g` },
     { label: 'Eau', value: n?.waterMl ?? 0, target: n?.hydration.ml ?? 2000, color: '--c-eau', text: `${((n?.waterMl ?? 0) / 1000).toFixed(1).replace('.', ',')} L` },
     { label: 'Sommeil', value: view.sleepLastNight ?? 0, target: 7.5, color: '--c-sommeil', text: view.sleepLastNight != null ? `${view.sleepLastNight.toFixed(1).replace('.', ',')} h` : '—' },
   ]

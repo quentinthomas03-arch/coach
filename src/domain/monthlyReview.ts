@@ -14,7 +14,6 @@ export interface MonthlyInput {
   sleepHours: number[]
   cravings: { at: string; resisted: boolean }[]
   trophies: Trophy[]
-  foodDays: number
 }
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -57,7 +56,6 @@ export function monthlyReview(i: MonthlyInput): WeeklyReview {
   if (ch.some((c) => c.cigarettes != null)) facts.push(`Tabac : ${cigs} cigarette${cigs > 1 ? 's' : ''} notée${cigs > 1 ? 's' : ''}${cigsPrev ? ` (mois d’avant : ${cigsPrev})` : ''}.`)
   const cr = i.cravings.filter((c) => inM(c.at.slice(0, 10)))
   if (cr.length) facts.push(`Envies de fumer : ${cr.filter((c) => c.resisted).length} tenues sur ${cr.length}.`)
-  if (i.foodDays) facts.push(`Repas notés ${i.foodDays} jour${i.foodDays > 1 ? 's' : ''}.`)
   const recs = newRecords(i.acts, from, end)
   for (const r of recs) facts.push(`🏆 Record : ${r.label.toLowerCase()} — ${r.value}.`)
   const tr = i.trophies.filter((t) => typeof t.earned === 'string' && inM(t.earned))
